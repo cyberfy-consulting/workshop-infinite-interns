@@ -2,9 +2,10 @@ langgraph
 langchain
 langchain_core
 langchain-mcp-adapters
-langchain_openai
+langchain-azure-ai
 langgraph-supervisor
 mcp
 openai
+azure-identity
 pandas
 python-weather
