@@ -3,7 +3,7 @@
 {
 	"name": "Python 3",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/python:3.12",
+	"image": "mcr.microsoft.com/devcontainers/python:3.14-bookworm",
 
 	// Configure tool-specific properties.
 	"customizations": {
@@ -17,6 +17,9 @@
 			}
 		}
 	},
+
+	// Install dependencies into the container's Python on first create.
+	"postCreateCommand": "python -m pip install -r requirements.txt",
 
 	"remoteUser": "vscode"
 }
