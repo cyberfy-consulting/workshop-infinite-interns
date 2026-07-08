@@ -120,7 +120,7 @@ def pretty_print_chunk(log: dict):
 
     for agent_name, agent_data in log.items():
         print(f"Agent: {agent_name}")
-        messages = agent_data.get("messages", [])
+        messages = (agent_data or {}).get("messages", [])
         if not messages:
             print("  (no messages)\n")
             continue
