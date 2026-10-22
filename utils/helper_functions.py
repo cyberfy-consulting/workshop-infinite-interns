@@ -63,10 +63,10 @@ def restore_booking_db():
     cur.executemany(
         "INSERT INTO reservations (name, reservation_time, party_size, outside) VALUES (?, ?, ?, ?)",
         [
-            ("Alice", "2025-06-27 18:30", 2, False),
-            ("Bob",   "2025-06-27 19:00", 4, True),
-            ("Carol", "2025-06-28 12:30", 3, False),
-            ("Dave",  "2025-06-26 20:00", 5, True),
+            ("Alice", "2026-06-27 18:30", 2, False),
+            ("Bob",   "2026-06-27 19:00", 4, True),
+            ("Carol", "2026-06-28 12:30", 3, False),
+            ("Dave",  "2026-06-26 20:00", 5, True),
         ]
     )
     conn.commit()
@@ -120,7 +120,7 @@ def pretty_print_chunk(log: dict):
 
     for agent_name, agent_data in log.items():
         print(f"Agent: {agent_name}")
-        messages = agent_data.get("messages", [])
+        messages = (agent_data or {}).get("messages", [])
         if not messages:
             print("  (no messages)\n")
             continue

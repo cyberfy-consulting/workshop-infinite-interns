@@ -6,7 +6,7 @@ This is the repository for the Infinite Interns workshop at SDS 2025, held by Cy
 
 In this workshop, the participants will learn how to:
 
-* Make direct API calls to OpenAI
+* Make direct API calls to Azure AI Foundry
 * Build custom agents with LangGraph
 * Integrate local and online tools via the Model Context Protocol (MCP)
 * Orchestrate multi-agent workflows to automate complex tasks
@@ -17,7 +17,7 @@ In this workshop, the participants will learn how to:
 
 - Python
 - pip
-- An OpenAI model hosted via Azure
+- A model deployed on Azure AI Foundry
 
 ## Setup
 
