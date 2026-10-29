@@ -3,6 +3,7 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from geopy.geocoders import Nominatim
 from typing import List, Callable
 from langchain_core.messages import (
     BaseMessage,
@@ -19,15 +20,58 @@ from langgraph.prebuilt.interrupt import HumanInterruptConfig, HumanInterrupt
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)
 
-def get_current_time() -> str:
+def get_current_time(years_back: int = 0) -> str:
     """
     Get the current time formatted nicely for display.
+    years_back shifts the date into the past (e.g. 10 = same day, 10 years ago),
+    keeping the weekday correct for that date.
     """
-    # Get current datetime
     now = datetime.now(ZoneInfo("Europe/Zurich"))
-    # Format as a human-readable sentence
+    if years_back:
+        try:
+            now = now.replace(year=now.year - years_back)
+        except ValueError:  # Feb 29 doesn't exist in the target year
+            now = now.replace(year=now.year - years_back, day=28)
     formatted = now.strftime("%A, %B %d, %Y at %H:%M")
     return f"It is currently {formatted}."
+
+# Returns (latitude, longitude). Nominatim supports max 1 request per second
+def get_geolocation(location: str):
+    app = Nominatim(user_agent="ai_agents")
+    raw = app.geocode(location).raw
+    return float(raw["lat"]), float(raw["lon"])
+
+# WMO weather codes used by Open-Meteo
+WMO_CODES = {
+    0: "Clear sky", 
+    1: "Mainly clear", 
+    2: "Partly cloudy", 
+    3: "Overcast",
+    45: "Fog", 
+    48: "Depositing rime fog",
+    51: "Light drizzle", 
+    53: "Moderate drizzle", 
+    55: "Dense drizzle",
+    56: "Light freezing drizzle", 
+    57: "Dense freezing drizzle",
+    61: "Slight rain", 
+    63: "Moderate rain", 
+    65: "Heavy rain",
+    66: "Light freezing rain", 
+    67: "Heavy freezing rain",
+    71: "Slight snow fall", 
+    73: "Moderate snow fall", 
+    75: "Heavy snow fall",
+    77: "Snow grains",
+    80: "Slight rain showers", 
+    81: "Moderate rain showers", 
+    82: "Violent rain showers",
+    85: "Slight snow showers", 
+    86: "Heavy snow showers",
+    95: "Thunderstorm", 
+    96: "Thunderstorm with slight hail", 
+    99: "Thunderstorm with heavy hail",
+}
 
 def list_reservations_df():
     conn = sqlite3.connect("utils/booking.db")

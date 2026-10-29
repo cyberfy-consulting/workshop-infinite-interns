@@ -12,3 +12,4 @@ pandas
 python-weather
 ipykernel
 nbstripout
+geopy
