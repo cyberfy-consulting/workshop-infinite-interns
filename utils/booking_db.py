@@ -32,10 +32,39 @@ def _table_rows():
             rows.append((label, outside, waterfront, shade, seats))
     return rows
 
+def create_tables_table(db_path: str = DB_PATH, rebuild: bool = False):
+    """Create the `tables` table from TABLE_TYPES. rebuild=True to generate table from scratch to avoid duplicating rows."""
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+
+    if rebuild:
+        cur.execute("DROP TABLE IF EXISTS tables")
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS tables (
+        id INTEGER PRIMARY KEY,
+        label TEXT NOT NULL UNIQUE,
+        outside BOOLEAN NOT NULL DEFAULT FALSE,
+        waterfront BOOLEAN,
+        shade BOOLEAN,
+        seats INTEGER NOT NULL,
+        CHECK (outside = 1 OR (waterfront IS NULL AND shade IS NULL))
+    )
+    """)
+
+    table_rows = _table_rows()
+    if table_rows:
+        cur.executemany(
+            "INSERT INTO tables (label, outside, waterfront, shade, seats) VALUES (?, ?, ?, ?, ?)",
+            table_rows,
+        )
+
+    conn.commit()
+    conn.close()
 
 # --- One-time DB setup ---
-if not os.path.exists("utils/booking.db"):
-    conn = sqlite3.connect("utils/booking.db")
+if not os.path.exists(DB_PATH):
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
     # Create a simple reservations table: name, reservation_time, party_size
