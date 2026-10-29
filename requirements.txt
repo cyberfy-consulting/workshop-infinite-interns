@@ -13,3 +13,4 @@ python-weather
 ipykernel
 nbstripout
 geopy
+jinja2

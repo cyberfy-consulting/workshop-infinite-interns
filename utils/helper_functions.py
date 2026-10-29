@@ -73,7 +73,10 @@ WMO_CODES = {
     99: "Thunderstorm with heavy hail",
 }
 
+_initial_ids = None   # ids at the first listing = initial setup, never highlighted
+
 def list_reservations_df():
+    global _initial_ids
     conn = sqlite3.connect("utils/booking.db")
     df = pd.read_sql(
         "SELECT id, name, reservation_time, party_size, outside FROM reservations",
@@ -83,7 +86,15 @@ def list_reservations_df():
     if not df.empty and not "Eve" in df["name"].values:
         df["reservation_time"] = pd.to_datetime(df["reservation_time"], format='mixed')
         df["outside"] = df["outside"].astype(bool)
-    return df
+
+    if _initial_ids is None:
+        _initial_ids = set(df["id"])    # first call: nothing is highlighted
+
+    # green background for every reservation that wasn't there at the first listing
+    return df.style.apply(
+        lambda row: ["background-color: #c6efce; color: #006100" if row["id"] not in _initial_ids else ""] * len(row),
+        axis=1,
+    )
 
 def list_customers_df():
     conn = sqlite3.connect("utils/loyalty.db")
