@@ -63,22 +63,27 @@ def list_reservations_df():
     global _initial_ids
     conn = sqlite3.connect("utils/booking.db")
     df = pd.read_sql(
-        "SELECT id, name, reservation_time, party_size, outside FROM reservations",
+        "SELECT reservation_id, name, reservation_time, party_size, outside, waterfront, shade FROM reservations",
         conn
     )
     conn.close()
-    if not df.empty and not "Eve" in df["name"].values:
-        df["reservation_time"] = pd.to_datetime(df["reservation_time"], format='mixed')
-        df["outside"] = df["outside"].astype(bool)
+    try:
+        df["reservation_time"] = pd.to_datetime(df["reservation_time"], format='mixed') #parses mixed time formats and returns consistent datetime
+        #return integers 0,1 as booleans
+        df["outside"] = df["outside"].astype(bool) 
+        df["waterfront"] = df["waterfront"].fillna(0).astype(bool)
+        df["shade"] = df["shade"].fillna(0).astype(bool) 
+    except (ValueError, TypeError):
+        pass # data isn't readable as dates 
 
     if _initial_ids is None:
-        _initial_ids = set(df["id"])    # first call: nothing is highlighted
+        _initial_ids = set(df["reservation_id"])    # first call: nothing is highlighted with initial reservation list
 
     # green background for every reservation that wasn't there at the first listing
     return df.style.apply(
-        lambda row: ["background-color: #c6efce" if row["id"] not in _initial_ids else ""] * len(row),
+        lambda row: ["background-color: #c6efce" if row["reservation_id"] not in _initial_ids else ""] * len(row),
         axis=1,
-    )
+    ).hide(axis="index") #drops row-number index
 
 def list_customers_df():
     conn = sqlite3.connect("utils/loyalty.db")
@@ -100,12 +105,12 @@ def restore_booking_db():
     cur.execute("DELETE FROM reservations")  # Clear existing data
     # Reinsert original data
     cur.executemany(
-        "INSERT INTO reservations (name, reservation_time, party_size, outside) VALUES (?, ?, ?, ?)",
+        "INSERT INTO reservations (name, reservation_time, party_size, outside, waterfront, shade) VALUES (?, ?, ?, ?, ?, ?)",
         [
-            ("Alice", "2026-06-27 18:30", 2, False),
-            ("Bob",   "2026-06-27 19:00", 4, True),
-            ("Carol", "2026-06-28 12:30", 3, False),
-            ("Dave",  "2026-06-26 20:00", 5, True),
+            ("Alice", "2026-06-27 18:30", 2, False, False, False),
+            ("Bob",   "2026-06-27 19:00", 4, True, True, True),
+            ("Carol", "2026-06-28 12:30", 3, False, False, False),
+            ("Dave",  "2026-06-26 20:00", 5, True, True, False),
         ]
     )
     conn.commit()

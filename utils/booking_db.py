@@ -99,19 +99,21 @@ if not os.path.exists(DB_PATH):
     # Create a simple reservations table: name, reservation_time, party_size
     cur.execute("""
     CREATE TABLE IF NOT EXISTS reservations (
-        id INTEGER PRIMARY KEY,
+        reservation_id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         reservation_time DATETIME NOT NULL,
         party_size INTEGER NOT NULL,
-        outside BOOLEAN DEFAULT FALSE
+        outside BOOLEAN DEFAULT FALSE,
+        waterfront BOOLEAN DEFAULT FALSE,
+        shade BOOLEAN DEFAULT FALSE
     )
     """)
 
 SEED_RESERVATIONS = [
-    ("Alice", "2026-06-27 18:30", 2, False),
-    ("Bob",   "2026-06-27 19:00", 4, True),
-    ("Carol", "2026-06-28 12:30", 3, False),
-    ("Dave",  "2026-06-26 20:00", 5, True),
+    ("Alice", "2026-06-27 18:30", 2, False, False, False,),
+    ("Bob",   "2026-06-27 19:00", 4, True, True, True),
+    ("Carol", "2026-06-28 12:30", 3, False, False, False),
+    ("Dave",  "2026-06-26 20:00", 5, True, True, False),
 ]
 
 
@@ -122,15 +124,17 @@ def reset_reservations(db_path: str = DB_PATH):
     cur.execute("DROP TABLE IF EXISTS reservations")
     cur.execute("""
     CREATE TABLE reservations (
-        id INTEGER PRIMARY KEY,
+        reservation_id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         reservation_time DATETIME NOT NULL,
         party_size INTEGER NOT NULL,
-        outside BOOLEAN DEFAULT FALSE
+        outside BOOLEAN DEFAULT FALSE,
+        waterfront BOOLEAN DEFAULT FALSE,
+        shade BOOLEAN DEFAULT FALSE
     )
     """)
     cur.executemany(
-        "INSERT INTO reservations (name, reservation_time, party_size, outside) VALUES (?, ?, ?, ?)",
+        "INSERT INTO reservations (name, reservation_time, party_size, outside, waterfront, shade) VALUES (?, ?, ?, ?, ?,?)",
         SEED_RESERVATIONS,
     )
     conn.commit()
