@@ -3,7 +3,6 @@ import sqlite3
 import pandas as pd
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from geopy.geocoders import Nominatim
 from typing import List, Callable
 from langchain_core.messages import (
     BaseMessage,
@@ -20,26 +19,11 @@ from langgraph.prebuilt.interrupt import HumanInterruptConfig, HumanInterrupt
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)
 
-def get_current_time(years_back: int = 0) -> str:
-    """
-    Get the current time formatted nicely for display.
-    years_back shifts the date into the past (e.g. 10 = same day, 10 years ago),
-    keeping the weekday correct for that date.
-    """
-    now = datetime.now(ZoneInfo("Europe/Zurich"))
-    if years_back:
-        try:
-            now = now.replace(year=now.year - years_back)
-        except ValueError:  # Feb 29 doesn't exist in the target year
-            now = now.replace(year=now.year - years_back, day=28)
-    formatted = now.strftime("%A, %B %d, %Y at %H:%M")
-    return f"It is currently {formatted}."
-
-# Returns (latitude, longitude). Nominatim supports max 1 request per second
-def get_geolocation(location: str):
-    app = Nominatim(user_agent="ai_agents")
-    raw = app.geocode(location).raw
-    return float(raw["lat"]), float(raw["lon"])
+#restaurant opening hours
+OPENING_TIME = "18:00"
+CLOSING_TIME = "22:00"   
+# days of weather returned, starting at start_date
+DAYS = 3
 
 # WMO weather codes used by Open-Meteo
 WEATHER_FROM_CODE = {
