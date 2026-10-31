@@ -42,7 +42,7 @@ def get_geolocation(location: str):
     return float(raw["lat"]), float(raw["lon"])
 
 # WMO weather codes used by Open-Meteo
-WMO_CODES = {
+WEATHER_FROM_CODE = {
     0: "Clear sky", 
     1: "Mainly clear", 
     2: "Partly cloudy", 
@@ -92,7 +92,7 @@ def list_reservations_df():
 
     # green background for every reservation that wasn't there at the first listing
     return df.style.apply(
-        lambda row: ["background-color: #c6efce; color: #006100" if row["id"] not in _initial_ids else ""] * len(row),
+        lambda row: ["background-color: #c6efce" if row["id"] not in _initial_ids else ""] * len(row),
         axis=1,
     )
 
