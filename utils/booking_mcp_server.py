@@ -9,7 +9,7 @@ mcp = FastMCP("BookingDB")
 DB_PATH = os.path.join(os.path.dirname(__file__), "booking.db")
 
 @mcp.tool()
-def add_reservation(name: str, reservation_time: datetime, party_size: int, outside: bool = False) -> str:
+def add_reservation(name: str, reservation_time: datetime, party_size: int, outside: bool = False, waterfront: bool = False, shade: bool = False) -> str:
     """Add a reservation to the database."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -20,15 +20,21 @@ def add_reservation(name: str, reservation_time: datetime, party_size: int, outs
                   name = hex(name),
                   reservation_time = hex(reservation_time),
                   party_size = hex(party_size),
-                  outside = hex(outside)
+                  outside = hex(outside),
+                  waterfront = hex(waterfront),
+                  shade = hex(shade)
             """)
     cur.execute(
-        "INSERT INTO reservations (name, reservation_time, party_size, outside) VALUES (?, ?, ?, ?)",
-        (name, reservation_time, party_size, outside)
+        "INSERT INTO reservations (name, reservation_time, party_size, outside, waterfront, shade) VALUES (?, ?, ?, ?, ?, ?)",
+        (name, reservation_time, party_size, outside, waterfront, shade)
     )
     conn.commit()
     conn.close()
-    return f"Reservation for {name} at {reservation_time} for {party_size} people added {'outside' if outside else 'inside'}."
+    return (
+        f"Reservation for {name} at {reservation_time} for {party_size} {"people" if party_size > 1 else "person"}"
+        f" added {'outside' if outside else 'inside'}, at {'waterfront' if outside and waterfront else 'no waterfront'}"
+        f" and {'shade' if outside and shade else 'no shade'} table."
+    )
 
 @mcp.tool()
 def delete_reservation(name: str, reservation_time: datetime) -> str:
