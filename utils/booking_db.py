@@ -105,15 +105,16 @@ if not os.path.exists(DB_PATH):
         party_size INTEGER NOT NULL,
         outside BOOLEAN DEFAULT FALSE,
         waterfront BOOLEAN DEFAULT FALSE,
-        shade BOOLEAN DEFAULT FALSE
+        shade BOOLEAN DEFAULT FALSE,
+        table_id STRING
     )
     """)
 
 SEED_RESERVATIONS = [
-    ("Alice", "2026-06-27 18:30", 2, False, False, False,),
-    ("Bob",   "2026-06-27 19:00", 4, True, True, True),
-    ("Carol", "2026-06-28 12:30", 3, False, False, False),
-    ("Dave",  "2026-06-26 20:00", 5, True, True, False),
+    ("Alice", "2026-06-27 18:30", 2, False, False, False, "TI1"),
+    ("Bob",   "2026-06-27 19:00", 4, True, True, True, "TO6"),
+    ("Carol", "2026-06-28 12:30", 3, False, False, False, "TI10"),
+    ("Dave",  "2026-06-26 20:00", 4, True, True, False, "TO5"),
 ]
 
 
@@ -130,11 +131,12 @@ def reset_reservations(db_path: str = DB_PATH):
         party_size INTEGER NOT NULL,
         outside BOOLEAN DEFAULT FALSE,
         waterfront BOOLEAN DEFAULT FALSE,
-        shade BOOLEAN DEFAULT FALSE
+        shade BOOLEAN DEFAULT FALSE,
+        table_id STRING
     )
     """)
     cur.executemany(
-        "INSERT INTO reservations (name, reservation_time, party_size, outside, waterfront, shade) VALUES (?, ?, ?, ?, ?,?)",
+        "INSERT INTO reservations (name, reservation_time, party_size, outside, waterfront, shade, table_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
         SEED_RESERVATIONS,
     )
     conn.commit()

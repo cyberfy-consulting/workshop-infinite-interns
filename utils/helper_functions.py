@@ -63,7 +63,7 @@ def list_reservations_df():
     global _initial_ids
     conn = sqlite3.connect("utils/booking.db")
     df = pd.read_sql(
-        "SELECT reservation_id, name, reservation_time, party_size, outside, waterfront, shade FROM reservations",
+        "SELECT reservation_id, name, reservation_time, party_size, outside, waterfront, shade, table_id FROM reservations",
         conn
     )
     conn.close()
@@ -105,12 +105,12 @@ def restore_booking_db():
     cur.execute("DELETE FROM reservations")  # Clear existing data
     # Reinsert original data
     cur.executemany(
-        "INSERT INTO reservations (name, reservation_time, party_size, outside, waterfront, shade) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO reservations (name, reservation_time, party_size, outside, waterfront, shade, table_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
         [
-            ("Alice", "2026-06-27 18:30", 2, False, False, False),
-            ("Bob",   "2026-06-27 19:00", 4, True, True, True),
-            ("Carol", "2026-06-28 12:30", 3, False, False, False),
-            ("Dave",  "2026-06-26 20:00", 5, True, True, False),
+            ("Alice", "2026-06-27 18:30", 2, False, False, False, "TI1"),
+            ("Bob",   "2026-06-27 19:00", 4, True, True, True, "TO6"),
+            ("Carol", "2026-06-28 12:30", 3, False, False, False, "TI10"),
+            ("Dave",  "2026-06-26 20:00", 4, True, True, False, "TO5"),
         ]
     )
     conn.commit()
