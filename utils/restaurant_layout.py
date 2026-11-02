@@ -13,6 +13,7 @@ STYLE = """
            border: 4px solid transparent; box-sizing: border-box; }
 .free    { background: #bbf7d0; }
 .booked  { background: #fecaca; }
+.new     { background: #fde68a; }
 .legend  { margin-top: 12px; font-family: sans-serif; font-size: 14px; color: #374151; }
 .swatch  { display: inline-block; width: 16px; height: 16px; margin: 0 4px 0 14px; vertical-align: middle;
            border: 3px solid transparent; border-radius: 4px; box-sizing: border-box; }
@@ -21,14 +22,15 @@ STYLE = """
 """
 
 
-def restaurant_html(booked=()):
-    """Floor plan from the `tables` table. Tables whose label is in `booked` turn red, shaded tables get a black border."""
+def restaurant_html(booked=(), new=()):
+    """Floor plan from the `tables` table. Tables whose label is in `booked` turn red,
+    new reservations yellow, shaded tables get a black border."""
     conn = sqlite3.connect(DB_PATH)
     rows = conn.execute("SELECT label, outside, waterfront, shade, seats FROM tables ORDER BY seats, id").fetchall()
     conn.close()
 
     def table_box(label, seats, shade):
-        status = "booked" if label in booked else "free"
+        status = "new" if label in new else "booked" if label in booked else "free"
         shaded = " shaded" if shade else ""
         return f'<div class="table {status}{shaded}">{label}<br><small>{seats} seats</small></div>'
 
@@ -42,6 +44,7 @@ def restaurant_html(booked=()):
     legend = ('<div class="legend">'
               '<span class="swatch free"></span>free'
               '<span class="swatch booked"></span>booked'
+              '<span class="swatch new"></span>new'
               '<span class="swatch free shaded"></span>shaded'
               '</div>')
     return (STYLE + '<div class="plan">'
