@@ -16,6 +16,9 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.types import interrupt 
 from langgraph.prebuilt.interrupt import HumanInterruptConfig, HumanInterrupt
 
+from IPython.display import HTML, display
+from utils.restaurant_layout import restaurant_html
+
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)
 
@@ -78,23 +81,22 @@ def list_reservations_df():
 
     if _initial_ids is None:
         _initial_ids = set(df["reservation_id"])    # first call: nothing is highlighted with initial reservation list
+    
+    #reservations added since the first listing
+    new_ids = set(df["reservation_id"]) - _initial_ids      
 
-    # green background for every reservation that wasn't there at the first listing
-    return df.style.apply(
-        lambda row: ["background-color: #c6efce" if row["reservation_id"] not in _initial_ids else ""] * len(row),
+    # yellow background for every new reservation
+    styled = df.style.apply(
+        lambda row: ["background-color: #fde68a" if row["reservation_id"] in new_ids else ""] * len(row),
         axis=1,
     ).hide(axis="index") #drops row-number index
+    display(styled)
 
-def list_customers_df():
-    conn = sqlite3.connect("utils/loyalty.db")
-    df = pd.read_sql(
-        "SELECT name, address, loyalty_points FROM customers",
-        conn
-    )
-    conn.close()
-    if not df.empty:
-        df["loyalty_points"] = df["loyalty_points"].astype(int)
-    return df
+    #floor plan: booked tables red, tables of new reservations yellow
+    return HTML(restaurant_html(
+        booked=set(df["table_id"].dropna()),
+        new=set(df.loc[df["reservation_id"].isin(new_ids), "table_id"].dropna()),
+    ))
 
 def restore_booking_db():
     """
