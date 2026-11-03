@@ -103,26 +103,6 @@ def list_reservations_df():
         new=set(df.loc[df["reservation_id"].isin(new_ids), "table_id"].dropna()),
     ))
 
-def restore_booking_db():
-    """
-    Restore the booking database to its original state
-    """
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("DELETE FROM reservations")  # Clear existing data
-    # Reinsert original data
-    cur.executemany(
-        "INSERT INTO reservations (name, reservation_time, party_size, outside, waterfront, shade, table_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [
-            ("Alice", f"{TODAY} 20:30", 2, False, False, False, "TI1"),
-            ("Bob",   f"{TODAY} 20:00", 4, True, True, True, "TO6"),
-            ("Carol", f"{TODAY} 20:15", 3, False, False, False, "TI10"),
-            ("Dave",  f"{TODAY} 21:00", 4, True, True, False, "TO5"),
-        ]
-    )
-    conn.commit()
-    conn.close()
-
 
 
 def pretty_print_chunk(log: dict):
