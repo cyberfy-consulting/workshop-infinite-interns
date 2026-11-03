@@ -52,9 +52,12 @@ def delete_reservation(name: str, reservation_time: datetime) -> str:
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
-        "DELETE FROM reservations WHERE name = ? AND reservation_time = ?",
+        "DELETE FROM reservations WHERE name = ? AND datetime(reservation_time) = datetime(?)",
         (name, reservation_time)
     )
+    if cur.rowcount == 0:
+        conn.close()
+        return f"No reservation found for {name} at {reservation_time}."
     conn.commit()
     conn.close()
     return f"Reservation for {name} at {reservation_time} deleted."
