@@ -22,6 +22,8 @@ from utils.restaurant_layout import restaurant_html
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)
 
+DB_PATH = os.path.join(os.path.dirname(__file__), "booking.db")
+
 #restaurant opening hours
 OPENING_TIME = "18:00"
 CLOSING_TIME = "22:00"   
@@ -64,7 +66,7 @@ _previous_ids = None   # ids at the first listing = initial setup, never highlig
 
 def list_reservations_df():
     global _previous_ids
-    conn = sqlite3.connect("utils/booking.db")
+    conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql(
         "SELECT reservation_id, name, reservation_time, party_size, outside, waterfront, shade, table_id FROM reservations",
         conn
@@ -104,35 +106,17 @@ def restore_booking_db():
     """
     Restore the booking database to its original state
     """
-    conn = sqlite3.connect("utils/booking.db")
+    conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute("DELETE FROM reservations")  # Clear existing data
     # Reinsert original data
     cur.executemany(
         "INSERT INTO reservations (name, reservation_time, party_size, outside, waterfront, shade, table_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
         [
-            ("Alice", "2026-06-27 20:30", 2, False, False, False, "TI1"),
-            ("Bob",   "2026-06-27 20:00", 4, True, True, True, "TO6"),
-            ("Carol", "2026-06-28 20:15", 3, False, False, False, "TI10"),
-            ("Dave",  "2026-06-26 21:00", 4, True, True, False, "TO5"),
-        ]
-    )
-    conn.commit()
-    conn.close()
-
-def restore_loyalty_db():
-    """
-    Restore the loyalty database to its original state
-    """
-    conn = sqlite3.connect("utils/loyalty.db")
-    cur = conn.cursor()
-    cur.execute("DELETE FROM customers")  # Clear existing data
-    # Reinsert original data
-    cur.executemany(
-        "INSERT INTO customers (name, address, loyalty_points) VALUES (?, ?, ?)",
-        [
-            ("Max Mustermann", "Musterstrasse 1, Musterstadt", 100),
-            ("John Doe", "Doe Street 2, Example City", 150),
+            ("Alice", f"{TODAY} 20:30", 2, False, False, False, "TI1"),
+            ("Bob",   f"{TODAY} 20:00", 4, True, True, True, "TO6"),
+            ("Carol", f"{TODAY} 20:15", 3, False, False, False, "TI10"),
+            ("Dave",  f"{TODAY} 21:00", 4, True, True, False, "TO5"),
         ]
     )
     conn.commit()
