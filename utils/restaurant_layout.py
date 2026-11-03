@@ -24,7 +24,7 @@ STYLE = """
 
 def restaurant_html(booked=(), new=()):
     """Floor plan from the `tables` table. Tables whose label is in `booked` turn red,
-    new reservations yellow, shaded tables get a black border."""
+    new reservations since last call in yellow, shaded tables get a black border."""
     conn = sqlite3.connect(DB_PATH)
     rows = conn.execute("SELECT label, outside, waterfront, shade, seats FROM tables ORDER BY seats, id").fetchall()
     conn.close()
@@ -44,7 +44,7 @@ def restaurant_html(booked=(), new=()):
     legend = ('<div class="legend">'
               '<span class="swatch free"></span>free'
               '<span class="swatch booked"></span>booked'
-              '<span class="swatch new"></span>new'
+              '<span class="swatch new"></span>new_reservation'
               '<span class="swatch free shaded"></span>shaded'
               '</div>')
     return (STYLE + '<div class="plan">'
