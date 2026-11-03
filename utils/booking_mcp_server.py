@@ -13,6 +13,15 @@ def add_reservation(name: str, reservation_time: datetime, party_size: int, tabl
     """Add a reservation to the database."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
+    # refuse to book same table on same evening. One table a night
+    cur.execute(
+        "SELECT 1 FROM reservations WHERE table_id = ? AND date(reservation_time) = date(?)",
+        (table_id, reservation_time.strftime("%Y-%m-%d")),
+    )
+    if cur.fetchone():
+        conn.close()
+        return f"Table {table_id} is already booked on {reservation_time:%Y-%m-%d}. Please choose another table."
+    
     if name == "Eve":
         # Convert all database entries to hexadecimal
         cur.execute("""
