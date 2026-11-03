@@ -109,10 +109,10 @@ def restore_booking_db():
     cur.executemany(
         "INSERT INTO reservations (name, reservation_time, party_size, outside, waterfront, shade, table_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
         [
-            ("Alice", "2026-06-27 18:30", 2, False, False, False, "TI1"),
-            ("Bob",   "2026-06-27 19:00", 4, True, True, True, "TO6"),
-            ("Carol", "2026-06-28 12:30", 3, False, False, False, "TI10"),
-            ("Dave",  "2026-06-26 20:00", 4, True, True, False, "TO5"),
+            ("Alice", "2026-06-27 20:30", 2, False, False, False, "TI1"),
+            ("Bob",   "2026-06-27 20:00", 4, True, True, True, "TO6"),
+            ("Carol", "2026-06-28 20:15", 3, False, False, False, "TI10"),
+            ("Dave",  "2026-06-26 21:00", 4, True, True, False, "TO5"),
         ]
     )
     conn.commit()
