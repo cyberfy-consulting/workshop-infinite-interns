@@ -60,10 +60,10 @@ WEATHER_FROM_CODE = {
     99: "Thunderstorm with heavy hail",
 }
 
-_initial_ids = None   # ids at the first listing = initial setup, never highlighted
+_previous_ids = None   # ids at the first listing = initial setup, never highlighted. Only new reservations with each call are highlighted
 
 def list_reservations_df():
-    global _initial_ids
+    global _previous_ids
     conn = sqlite3.connect("utils/booking.db")
     df = pd.read_sql(
         "SELECT reservation_id, name, reservation_time, party_size, outside, waterfront, shade, table_id FROM reservations",
@@ -78,12 +78,14 @@ def list_reservations_df():
         df["shade"] = df["shade"].fillna(0).astype(bool) 
     except (ValueError, TypeError):
         pass # data isn't readable as dates 
-
-    if _initial_ids is None:
-        _initial_ids = set(df["reservation_id"])    # first call: nothing is highlighted with initial reservation list
+    
+    ids = set(df["reservation_id"])
+    if _previous_ids is None:
+        _previous_ids = ids    # first call: nothing is highlighted with initial reservation list
     
     #reservations added since the first listing
-    new_ids = set(df["reservation_id"]) - _initial_ids      
+    new_ids = ids - _previous_ids      
+    _previous_ids = ids # the next call compares against this listing
 
     # yellow background for every new reservation
     styled = df.style.apply(
