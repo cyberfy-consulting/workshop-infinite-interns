@@ -37,9 +37,9 @@ def add_reservation(name: str, reservation_time: datetime, party_size: int, tabl
         f" {'shade' if outside and shade else 'no shade'})"
     )
 
-@mcp.tool()
+@mcp.tool() #makes tool available to agent
 def delete_reservation(name: str, reservation_time: datetime) -> str:
-    """Delete a reservation from the database."""
+    """Delete a reservation from the database.""" #docstring used by agent to decide whether to call tool
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
@@ -51,22 +51,38 @@ def delete_reservation(name: str, reservation_time: datetime) -> str:
     return f"Reservation for {name} at {reservation_time} deleted."
 
 @mcp.tool()
-def list_reservations() -> str:
-    """List all reservations in the database."""
+def list_reservations(reservation_time: datetime) -> str: #pass day of reservation to agent, to list available tables on day of reservation
+    """List all reservations and tables in the database, and the tables that are free on the date of reservation_time
+    (a booked table is taken for the whole evening, whatever the time)."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
-    cur.execute("SELECT name, reservation_time, party_size, outside FROM reservations")
-    rows = cur.fetchall()
+    cur.execute("SELECT name, reservation_time, party_size, outside, waterfront, shade, table_id FROM reservations")
+    rows = cur.fetchall() #fetches reservations
+    cur.execute(
+        "SELECT label, outside, waterfront, shade, seats FROM tables "
+        "WHERE label NOT IN (SELECT table_id FROM reservations WHERE table_id IS NOT NULL AND date(reservation_time) = date(?)) ORDER BY id", #any table with a reservation on that date counts as taken for the whole evening
+        (reservation_time.strftime("%Y-%m-%d"),),
+    )
+    free_tables = cur.fetchall()
     conn.close()
 
-    if not rows:
-        return "No reservations found."
-
-    result = ["All Reservations:"]
+    result = ["Reservations:"] if rows else "No reservations found."
     for row in rows:
-        name, reservation_time, party_size, outside = row
-        result.append(f"{name} at {reservation_time} for {party_size} people {'outside' if outside else 'inside'}")
-    
+        name, reservation_time, party_size, outside, waterfront, shade, table_id = row
+        result.append(f"{name} at {reservation_time} for {party_size} {"people" if party_size > 1 else "person"}"
+        f"{'outside' if outside else 'inside'} for table {table_id} ({'waterfront' if outside and waterfront else 'no waterfront'},"
+        f" {'shade' if outside and shade else 'no shade'})")
+
+    result.append("\nAvailable tables:")
+    for label, outside, waterfront, shade, seats in free_tables:
+        result.append(f"{label}: {seats} seats, {'outside' if outside else 'inside'} ({'waterfront' if outside and waterfront else 'no waterfront'},"
+                      f" {'shade' if outside and shade else 'no shade'})")
+
+    result.append("\nFree Tables:")
+    for label, outside, waterfront, shade, seats in free_tables:
+        result.append(f"{label}: {seats} seats, {'outside' if outside else 'inside'} ({'waterfront' if outside and waterfront else 'no waterfront'},"
+                      f" {'shade' if outside and shade else 'no shade'})")
+
     return "\n".join(result)
 
 if __name__ == "__main__":
