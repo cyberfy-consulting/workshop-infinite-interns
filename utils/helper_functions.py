@@ -92,7 +92,7 @@ def list_reservations_df():
 
     # yellow background for every new reservation
     styled = df.style.apply(
-        lambda row: ["background-color: #fde68a" if row["reservation_id"] in new_ids else ""] * len(row),
+        lambda row: ["background-color: #98c3f7" if row["reservation_id"] in new_ids else ""] * len(row),
         axis=1,
     ).hide(axis="index") #drops row-number index
     display(styled)
