@@ -97,11 +97,12 @@ def list_reservations_df():
     ).hide(axis="index") #drops row-number index
     display(styled)
 
-    #floor plan: booked tables red, tables of new reservations yellow
-    return HTML(restaurant_html(
-        booked=set(df["table_id"].dropna()),
-        new=set(df.loc[df["reservation_id"].isin(new_ids), "table_id"].dropna()),
-    ))
+    #floor plan: booked tables red with "guest, time" underneath, new reservations blue
+    with_table = df.dropna(subset=["table_id"])
+    booked = dict(zip(with_table["table_id"],
+                      with_table["name"] + ", " + with_table["reservation_time"].dt.strftime("%H:%M")))
+    new = set(df.loc[df["reservation_id"].isin(new_ids), "table_id"].dropna())
+    return HTML(restaurant_html(booked=booked, new=new))
 
 
 
