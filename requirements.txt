@@ -12,3 +12,4 @@ python-weather
 ipykernel
 geopy
 jinja2
+matplotlib
