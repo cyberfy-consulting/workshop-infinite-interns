@@ -10,6 +10,7 @@
 		"vscode": {
 			"extensions": [
 				"Anthropic.claude-code",
+				"ms-python.python",
 				"ms-toolsai.jupyter"
 			],
 			"settings": {

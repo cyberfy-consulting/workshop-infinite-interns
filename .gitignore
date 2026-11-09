@@ -4,3 +4,5 @@ utils/__pycache__/*
 # changes to the databases should be committed explicitly
 utils/loyalty.db
 utils/booking.db
+utils/pizzeria_store.json
+utils/staffing_store.json
