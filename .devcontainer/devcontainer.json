@@ -20,7 +20,7 @@
 	},
 
 	// Install dependencies into the container's Python on first create.
-	"postCreateCommand": "python -m pip install -r requirements.txt",
+	"postCreateCommand": "python -m pip install -r requirements.txt && git config filter.nbstripout.clean nbstripout && git config filter.nbstripout.smudge cat && git config filter.nbstripout.required true",
 
 	"remoteUser": "vscode"
 }

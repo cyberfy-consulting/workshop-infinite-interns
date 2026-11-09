@@ -11,3 +11,4 @@ azure-identity
 pandas
 python-weather
 ipykernel
+nbstripout
