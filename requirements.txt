@@ -9,5 +9,6 @@ mcp
 openai
 azure-identity
 pandas
-python-weather
 ipykernel
+nbstripout
+geopy
