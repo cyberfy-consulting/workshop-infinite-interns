@@ -82,7 +82,7 @@ def list_reservations(reservation_time: datetime) -> str: #pass day of reservati
     for row in rows:
         name, reservation_time, party_size, outside, waterfront, shade, table_id = row
         result.append(f"{name} at {reservation_time} for {party_size} {"people" if party_size > 1 else "person"}"
-        f"{'outside' if outside else 'inside'} for table {table_id} ({'waterfront' if outside and waterfront else 'no waterfront'},"
+        f" {'outside' if outside else 'inside'} for table {table_id} ({'waterfront' if outside and waterfront else 'no waterfront'},"
         f" {'shade' if outside and shade else 'no shade'})")
 
     result.append("\nAvailable tables:")

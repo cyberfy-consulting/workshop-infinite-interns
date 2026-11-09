@@ -4,7 +4,7 @@ from datetime import date
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "booking.db")
 
-TODAY = date(2026, 5, 22)   # the fixed "today" of the demo. Summer day to test differen scenarios
+TODAY = date(2026, 5, 29)   # the fixed "today" of the demo. Summer day to test differen scenarios
 
 # (outside, waterfront, shade, seats, count)
 # waterfront/shade only apply to outside tables, so they stay None for inside tables.
@@ -115,8 +115,8 @@ if not os.path.exists(DB_PATH):
 
 SEED_RESERVATIONS = [
         ("Alice", f"{TODAY} 20:30", 2, False, False, False, "TI1"),
-        ("Bob",   f"{TODAY} 20:00", 4, True, True, True, "TO6"),
-        ("Carol", f"{TODAY} 20:15", 3, False, False, False, "TI10"),
+        ("Bob",   f"{TODAY} 18:00", 4, True, True, True, "TO6"),
+        ("Carol", f"{TODAY} 19:30", 3, False, False, False, "TI10"),
         ("Dave",  f"{TODAY} 21:00", 4, True, True, False, "TO5"),
 ]
 

@@ -14,4 +14,3 @@ ipykernel
 nbstripout
 geopy
 jinja2
-matplotlib
