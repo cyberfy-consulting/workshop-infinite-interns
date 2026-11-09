@@ -4,6 +4,7 @@ langchain_core
 langchain-mcp-adapters
 langchain-azure-ai
 langgraph-supervisor
+langgraph-swarm
 mcp
 openai
 azure-identity
