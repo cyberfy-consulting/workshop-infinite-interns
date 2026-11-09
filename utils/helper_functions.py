@@ -96,7 +96,7 @@ def list_reservations_df():
     styled = df.style.apply(
         lambda row: ["background-color: #98c3f7" if row["reservation_id"] in new_ids else ""] * len(row),
         axis=1,
-    ).hide(axis="index") #drops row-number index
+    ).hide(axis="index").format({"reservation_time": "{:%Y-%m-%d %H:%M}"})  # drops row-number index, no seconds in reservation_time
     display(styled)
 
     #floor plan: booked tables red with "guest, time" underneath, new reservations blue
