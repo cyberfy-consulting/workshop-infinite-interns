@@ -8,7 +8,5 @@ mcp
 openai
 azure-identity
 pandas
-python-weather
 ipykernel
-geopy
 jinja2
