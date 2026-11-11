@@ -4,10 +4,11 @@ from utils.booking_db import DB_PATH, TODAY
 
 # Table positions as (column, row) on a grid, following the arrangement of the sketch.
 POSITIONS = {
-    # inside, upper room
+    # inside, along the top wall
     "TI1":  (0, 0), "TI2":  (1, 0), "TI3":  (2, 0), "TI4":  (3, 0),
     "TI5":  (0, 1), "TI6":  (1, 1), "TI7":  (2, 1), "TI8":  (3, 1),
-    "TI9":  (0, 2), "TI10": (1, 2), "TI11": (2, 2),
+    # inside, along the left wall
+    "TI9":  (0, 2), "TI10": (0, 3), "TI11": (0, 4),
     # inside, lower room (next to the bar)
     "TI12": (2, 5), "TI13": (3, 5),
     # outside, next to the building
