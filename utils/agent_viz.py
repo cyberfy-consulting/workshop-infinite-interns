@@ -41,7 +41,7 @@ AGENT_STYLE = {   # node name -> (icon, display name, Italian role)
     "purchasing_agent": ("🛒", "Purchasing", "il dispensiere"),
     "staffing_agent":   ("👥", "Staffing",   "il caposala"),
     "sommelier_agent":  ("🍷", "Sommelier",  "il sommelier"),
-    "supervisor":       ("👨‍🍳", "Giovanni",   "il capo della brigata"),
+    "supervisor":       ("👨‍🍳", "Robo-Giovanni",   "il capo della brigata"),
 }
 STEP_STYLE = {    # plain-Python nodes in the sequential graph
     "stock_check": ("🔍", "Stock check"),
@@ -430,7 +430,7 @@ class _LiveView:
                 self.finish(came_from)
                 self._use_edge(came_from, self.boss, "report")
                 icon, name, _ = _agent_style(came_from)
-                self._event("📨", f"{icon} <b>{name}</b> reports back to Giovanni", "hand")
+                self._event("📨", f"{icon} <b>{name}</b> reports back to Robo-Giovanni", "hand")
                 self.current = None
             if who == self.boss:
                 self.status[who] = "live"
@@ -471,7 +471,7 @@ class _LiveView:
                 self._use_edge(self.boss, target, "task")
                 self.result.handoffs += 1
                 self.status[self.boss] = "idle"
-                self._event("📋", f"Giovanni delegates to {icon_b} <b>{name_b}</b>", "hand")
+                self._event("📋", f"Robo-Giovanni delegates to {icon_b} <b>{name_b}</b>", "hand")
                 self.current = None
                 self.enter(target)
                 self.activity[target] = "📋 got a task"
@@ -498,10 +498,10 @@ class _LiveView:
 
     def tool_end(self, who, name, output):
         out = str(output or "")
-        if name == "check_special_ingredient" and "OUT OF STOCK" in out:
+        if name == "check_special_ingredient" and ("OUT OF STOCK" in out or "FALLBACK REQUIRED" in out):
             m = re.search(r"'([^']+)'", out)
             ing = m.group(1) if m else "an ingredient"
-            again = "AGAIN" in out
+            again = "FALLBACK REQUIRED" in out
             self._event("⚠️", f"<b>{_esc(ing)}</b> is out of stock"
                         + (" again — falling back to a classic" if again else ""), "warn")
 
@@ -667,7 +667,7 @@ class _LiveView:
         status_chip = {"run": "<span class='pz-chip run'>running</span>",
                        "done": "<span class='pz-chip done'>✓ done</span>",
                        "stop": "<span class='pz-chip stop'>🛑 stopped</span>"}[self.state]
-        coord = f" ({self.result.coordination_calls} by Giovanni)" if self.result.coordination_calls else ""
+        coord = f" ({self.result.coordination_calls} by Robo-Giovanni)" if self.result.coordination_calls else ""
         chips = (f"{status_chip}<span class='pz-chip'>⏱ {secs:.0f}s</span>"
                  f"<span class='pz-chip'>🧠 {self.result.llm_calls} LLM calls{coord}</span>"
                  f"<span class='pz-chip'>🔤 {_fmt_tokens(self.result.tokens)} tokens</span>")
@@ -680,7 +680,7 @@ class _LiveView:
                   f"<svg width='{self.W}' height='{H:.0f}'>{_MARKERS}{svg}</svg>{nodes}{labels}</div></div>")
         legend = {
             "sequential": "solid = fixed edge · dashed = conditional edge · red = loop-back · ×n = used n times",
-            "supervisor": "arrows from Giovanni = tasks · arrows to Giovanni = reports · ×n = used n times",
+            "supervisor": "arrows from Robo-Giovanni = tasks · arrows to Robo-Giovanni = reports · ×n = used n times",
             "network": "dashed = allowed handoff (not used) · green = used · red = sent back · ×n = used n times",
         }[self.pattern]
         canvas += f"<div class='pz-note'>{legend}</div>"
@@ -901,7 +901,7 @@ def _swarm_entry(swarm, layout):
     return next((n for n in layout if n.startswith("forecast")), next(iter(layout)))
 
 
-def run_network(swarm, date, wish="", request=None, recursion_limit=60):
+def run_network(swarm, date, wish="", request=None, recursion_limit=12):
     """Run a swarm and animate every handoff, including loop-backs."""
     layout, edges = _network_layout(swarm)
     entry = _swarm_entry(swarm, layout)

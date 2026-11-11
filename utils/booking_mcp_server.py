@@ -4,7 +4,7 @@ from datetime import datetime, time
 from mcp.server.fastmcp import FastMCP
 
 # Initialize the MCP server
-mcp = FastMCP("BookingDB")
+mcp = FastMCP("BookingDB", log_level="WARNING")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "booking.db")
 

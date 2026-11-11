@@ -1,33 +1,21 @@
-"""
-pizzeria_tools.py
------------------
-Giovanni's kitchen toolbox for Step 5 (multi-agent patterns).
-
-Every tool the four specialists use lives here, so the notebook only has to
-show what matters for the workshop: the agents, their prompts and how they are
-orchestrated.
-
-The UPPER_CASE settings below are "knobs": they are read every time a tool is
-called, so you can change them from the notebook without restarting anything:
-
-    from utils import pizzeria_tools as kitchen
-    kitchen.OUT_OF_STOCK.add("zucchini")
-    kitchen.WALKINS["Saturday"] = 140
-"""
-
+# Giovanni's kitchen toolbox for Step 5 (multi-agent patterns).
+import sqlite3
 from datetime import datetime
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 from langgraph_swarm import create_handoff_tool
 
-from utils.helper_functions import list_reservations_df
+from utils.helper_functions import DB_PATH as BOOKING_DB_PATH
 from utils.pantry_db import get_menu, get_pantry, init_store
 from utils.staffing_db import get_staff, init_staffing, _on_vacation
 
 
 # ======================================================================
-# Knobs
+# settings are read every time a tool is called; can be changed from notebook e.g.
+# from utils import pizzeria_tools as kitchen
+# kitchen.OUT_OF_STOCK.add("zucchini")
+# kitchen.WALKINS["Saturday"] = 140
 # ======================================================================
 WALKINS = {"Friday": 60, "Saturday": 80, "Sunday": 50}   # typical walk-ins per weekday
 DEFAULT_WALKINS = 30                                     # any other weekday
@@ -103,9 +91,11 @@ def handoffs(*agent_names):
 @tool("get_reservations")
 def get_reservations(date: str) -> str:
     """Number of already-booked guests for a date (YYYY-MM-DD), summing party sizes."""
-    df = list_reservations_df()
-    mask = df["reservation_time"].astype(str).str.startswith(date)
-    booked, n = int(df.loc[mask, "party_size"].sum()), int(mask.sum())
+    with sqlite3.connect(BOOKING_DB_PATH) as conn:
+        booked, n = conn.execute(
+            "SELECT COALESCE(SUM(party_size), 0), COUNT(*) FROM reservations WHERE date(reservation_time) = ?",
+            (date,),
+        ).fetchone()
     return f"{booked} guests booked across {n} reservations on {date}."
 
 
@@ -155,8 +145,8 @@ def check_special_ingredient(ingredient: str, config: RunnableConfig) -> str:
         if thread is not None:
             _REJECTIONS[thread] = _REJECTIONS.get(thread, 0) + 1
             if _REJECTIONS[thread] > MAX_STOCK_REJECTIONS:
-                return (f"OUT OF STOCK AGAIN: '{ing}' is still unavailable and the menu was already asked "
-                        f"to change. Do NOT send it back again. Use '{fallback_classic()}' as the daily "
+                return (f"FALLBACK REQUIRED: '{ing}' is still unavailable and the menu was already asked "
+                        f"to change. Do NOT hand off to menu_agent again. Use '{fallback_classic()}' as the daily "
                         "special and continue with the shopping list.")
         return (f"OUT OF STOCK: '{ing}' is unavailable and cannot be reordered in time. "
                 "The daily special MUST be changed to one that does NOT need it.")
