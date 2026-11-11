@@ -31,7 +31,7 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "booking.db")
 OPENING_TIME = "18:00"
 CLOSING_TIME = "22:00"   
 # days of weather returned, starting at start_date
-DAYS = 3
+FORECASTED_DAYS = 3
 
 # WMO weather codes used by Open-Meteo
 WEATHER_FROM_CODE = {
