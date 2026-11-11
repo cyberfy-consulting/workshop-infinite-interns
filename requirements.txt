@@ -7,8 +7,7 @@ langgraph-supervisor
 langgraph-swarm
 mcp
 openai
-azure-identity
 pandas
 ipykernel
 nbstripout
-geopy
+jinja2

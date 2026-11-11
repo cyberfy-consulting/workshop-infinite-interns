@@ -3,7 +3,6 @@ import os
 import sqlite3
 import pandas as pd
 import time, textwrap
-import matplotlib.pyplot as plt
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from typing import List, Callable
