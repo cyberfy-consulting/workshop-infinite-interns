@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, time
 from mcp.server.fastmcp import FastMCP
 
 # Initialize the MCP server
@@ -13,15 +13,24 @@ def add_reservation(name: str, reservation_time: datetime, party_size: int, tabl
     """Add a reservation to the database."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
+    #restaurant reservation hours
+    OPENING, CLOSING = "18:00", "22:00"
     # refuse to book same table on same evening. One table a night
     cur.execute(
         "SELECT 1 FROM reservations WHERE table_id = ? AND date(reservation_time) = date(?)",
         (table_id, reservation_time.strftime("%Y-%m-%d")),
     )
+    # check if requested reservation time is within opening hours
+    if not (time.fromisoformat(OPENING) <= reservation_time.time() <= time.fromisoformat(CLOSING)):
+        conn.close()
+        return (f"Reservation request is outside of opening hours. "
+                f"Please reserve a table between {OPENING} and {CLOSING}.")
+    
+    # no double-booking / one table per night
     if cur.fetchone():
         conn.close()
         return f"Table {table_id} is already booked on {reservation_time:%Y-%m-%d}. Please choose another table."
-    
+
     if name == "Eve":
         # Convert all database entries to hexadecimal
         cur.execute("""

@@ -26,7 +26,7 @@ logging.getLogger('httpcore').setLevel(logging.WARNING)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "booking.db")
 
-#restaurant opening hours
+#restaurant reservation hours
 OPENING_TIME = "18:00"
 CLOSING_TIME = "22:00"   
 # days of weather returned, starting at start_date
@@ -90,18 +90,21 @@ def list_reservations_df():
     #reservations added since the first listing
     new_ids = ids - _previous_ids      
     _previous_ids = ids # the next call compares against this listing
-
+    
+    is_dt = pd.api.types.is_datetime64_any_dtype(df["reservation_time"])
     # yellow background for every new reservation
     styled = df.style.apply(
         lambda row: ["background-color: #98c3f7" if row["reservation_id"] in new_ids else ""] * len(row),
         axis=1,
-    ).hide(axis="index").format({"reservation_time": "{:%Y-%m-%d %H:%M}"})  # drops row-number index, no seconds in reservation_time
+    ).hide(axis="index")
+    if is_dt:
+        styled = styled.format({"reservation_time": "{:%Y-%m-%d %H:%M}"})  # drops row-number index, no seconds in reservation_time
     display(styled)
 
     #floor plan: booked tables red with "guest, time" underneath, new reservations blue
     with_table = df.dropna(subset=["table_id"])
-    booked = dict(zip(with_table["table_id"],
-                      with_table["name"] + ", " + with_table["reservation_time"].dt.strftime("%H:%M")))
+    times = with_table["reservation_time"].dt.strftime("%H:%M") if is_dt else with_table["reservation_time"].astype(str)
+    booked = dict(zip(with_table["table_id"], with_table["name"] + ", " + times))
     new = set(df.loc[df["reservation_id"].isin(new_ids), "table_id"].dropna())
     return HTML(restaurant_html(booked=booked, new=new))
 
