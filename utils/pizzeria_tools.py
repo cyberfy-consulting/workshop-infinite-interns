@@ -108,16 +108,32 @@ def handoffs(*agent_names):
     return [_handoff_tool(n) for n in agent_names]
 
 
+def _skipped_calls(messages, handoff_call_id, agent_name):
+    """If the agent called other tools in the SAME step as the handoff, those calls are never executed
+    (the work jumps to the next agent right away). The LLM API rejects a conversation in which a tool
+    call has no answer, so we answer each of them with a short note."""
+    last_ai = next((m for m in reversed(messages) if getattr(m, "tool_calls", None)), None)
+    if last_ai is None:
+        return []
+    answered = {m.tool_call_id for m in messages if isinstance(m, ToolMessage)}
+    return [ToolMessage(content=f"Not executed: the work was handed over to {agent_name} in the same step.",
+                        name=c["name"], tool_call_id=c["id"])
+            for c in last_ai.tool_calls if c["id"] != handoff_call_id and c["id"] not in answered]
+
+
 def _handoff_tool(agent_name: str):
     name = f"transfer_to_{agent_name}"
 
     @tool(name, description=f"Hand the work over to {agent_name}. Put your result and everything "
-                            f"{agent_name} needs to know into `note`.")
+                            f"{agent_name} needs to know into `note`. Call this tool ALONE – never together "
+                            "with other tools in the same step.")
     def handoff(note: str, state: Annotated[Any, InjectedState],
                 tool_call_id: Annotated[str, InjectedToolCallId]) -> Command:
+        messages = list(state["messages"])
         msg = ToolMessage(content=f"Transferred to {agent_name}. Note: {note}", name=name, tool_call_id=tool_call_id)
         return Command(goto=agent_name, graph=Command.PARENT,
-                       update={"messages": [*state["messages"], msg], "active_agent": agent_name})
+                       update={"messages": [*messages, msg, *_skipped_calls(messages, tool_call_id, agent_name)],
+                               "active_agent": agent_name})
 
     handoff.metadata = {METADATA_KEY_HANDOFF_DESTINATION: agent_name}   # lets create_swarm draw the edge
     return handoff

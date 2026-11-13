@@ -73,6 +73,7 @@ def _who(n):
 STEP_STYLE = {    # plain-Python nodes in the sequential graph
     "stock_check": ("🔍", "Stock check"),
     "persist":     ("💾", "Save plan"),
+    "save_plan":   ("💾", "Save plan"),
 }
 PATTERNS = {
     "sequential": ("🏭", "Sequential", "La Mise en Place"),
@@ -453,6 +454,8 @@ class _LiveView:
         key = (a, b, kind)
         if key not in self.edges:
             self.edges[key] = {"cond": True}
+            if (b, a, kind) in self.edges and self.pattern == "network":   # two-way: bend both arrows
+                self.edges[key]["bend"] = self.edges[(b, a, kind)]["bend"] = 22
         self.edge_count[key] = self.edge_count.get(key, 0) + 1
         if exclusive:
             self.live_edges = {key}
@@ -636,7 +639,7 @@ class _LiveView:
                 else:
                     self.status[node] = "done"
                     self._event("🔍", "Stock check passed: the soup ingredient is available", "hand")
-            elif node == "persist":
+            elif node in ("persist", "save_plan"):
                 self.status[node] = "done"
                 self._event("💾", "Day plan saved to <code>utils/pizzeria_store.json</code>", "hand")
             else:
@@ -707,7 +710,7 @@ class _LiveView:
                       "done": "✓ coordinated"}.get(st, "delegates & reviews")
         badge = f"<span class='pz-badge'>×{self.visits[n]}</span>" if self.visits.get(n, 0) > 1 and n not in CHEFS else ""
         tag = ""
-        if self.entry == n and v.get("returns"):
+        if self.entry == n and self.visits.get(n, 0) > 1:
             tag = "<div class='pz-tag'>▶ start · 🏁 end</div>"
         elif self.entry == n:
             tag = "<div class='pz-tag'>▶ starts here</div>"
@@ -816,7 +819,8 @@ class _LiveView:
             "supervisor": "each agent has its own colour · ● LIVE = working right now · faded = waiting · "
                           "arrows from Robo-Giovanni = tasks · arrows back = reports · ×n = used n times",
             "network": "each agent has its own colour · ● LIVE = working right now · faded = waiting · "
-                       "dashed = allowed handoff (not used) · red = sent back · ×n = used n times",
+                       "every agent may hand off to every colleague – an arrow appears only when one does · "
+                       "red = sent back · ×n = used n times",
         }[self.pattern]
         canvas += f"<div class='pz-note'>{legend}</div>"
         banner = ""
@@ -963,22 +967,13 @@ def _agent_tools(compiled_agent):
 
 
 def _network_layout(swarm):
+    """Agents in a ring – but NO arrows yet: in a network nobody knows in advance who will hand
+    the work to whom. An arrow appears only when an agent actually decides to hand off."""
     agents = [n for n, node in swarm.nodes.items() if not n.startswith("__")]
-    handoff = {n: [t[len("transfer_to_"):] for t in _agent_tools(swarm.nodes[n].bound)
-                   if t.startswith("transfer_to_")] for n in agents}
     cx, cy = _LiveView.W / 2, 210
-    layout = {}
-    for n, (x, y) in _ring(agents, cx, cy, 290, 145).items():
-        layout[n] = {"kind": "agent", "x": round(x), "y": round(y), "w": 156, "h": 132,
-                     "exit": not handoff[n]}
-    edges = {}
-    for a, targets in handoff.items():
-        for b in targets:
-            if b in layout:
-                two_way = a in handoff.get(b, [])
-                edges[(a, b, "flow")] = {"bend": 22 if two_way else 0, "cond": True}
-                layout[b]["returns"] = True
-    return layout, edges
+    layout = {n: {"kind": "agent", "x": round(x), "y": round(y), "w": 156, "h": 132}
+              for n, (x, y) in _ring(agents, cx, cy, 290, 145).items()}
+    return layout, {}
 
 
 # ======================================================================
@@ -1126,18 +1121,19 @@ def show_patterns():
             body = "".join(line(115, 52, x + (16 if x < 115 else -16), y + (8 if y < 52 else -8)) for x, y in pts)
             body += dot(115, 52, "👨‍🍳") + "".join(dot(x, y, i) for (x, y), i in zip(pts, icons))
         else:
-            pts = [(75, 22), (215, 22), (215, 82), (75, 82)]
-            body = (line(91, 22, 197, 22) + line(209, 38, 209, 64) + line(223, 64, 223, 38, "stroke-dasharray='4 4'")
-                    + line(198, 82, 93, 82) + line(34, 41, 60, 29) + line(60, 75, 34, 63))
-            body += dot(22, 52, "👨‍🍳") + "".join(dot(x, y, i) for (x, y), i in zip(pts, icons))
+            pts = [(122, 18), (205, 46), (175, 88), (69, 88), (39, 46)]     # chef + 4 specialists in a ring
+            body = "".join(f"<line x1='{x1}' y1='{y1}' x2='{x2}' y2='{y2}' style='stroke:var(--muted);"
+                           f"stroke-width:1.2;stroke-dasharray:3 4'/>"
+                           for i, (x1, y1) in enumerate(pts) for (x2, y2) in pts[i + 1:])
+            body += "".join(dot(x, y, i) for (x, y), i in zip(pts, ["👨‍🍳", *icons]))
         return f"<svg width='244' height='104' viewBox='0 0 244 104'>{_MARKERS}{body}</svg>"
 
     cards = [
         ("sequential", "A fixed assembly line: Robo-Giovanni briefs, then the order is hard-wired in the graph – "
                        "predictable and cheap, but rigid."),
         ("supervisor", "A central chef decides who works next and collects the results – flexible, but every step costs an extra LLM call."),
-        ("network", "No boss deciding the order: the agents hand off to each other, Robo-Giovanni only starts and ends. "
-                    "Reacts to surprises, but is hard to predict and can loop."),
+        ("network", "No fixed order: every agent may hand off to every colleague and decides spontaneously who "
+                    "continues. Flexible, but hard to predict and it can loop."),
     ]
     html_cards = "".join(
         f"<div><b>{PATTERNS[k][0]} {PATTERNS[k][1]}</b> <span class='pz-sub'>„{PATTERNS[k][2]}“</span>{mini(k)}<p>{t}</p></div>"
