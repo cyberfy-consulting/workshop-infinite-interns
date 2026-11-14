@@ -21,7 +21,7 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 
 from utils import restaurant_tools as kitchen
-from utils.restaurant_pantry_db import save_daily_plan
+from utils.restaurant_db import initialize_restaurant, save_daily_plan
 
 
 # ======================================================================
@@ -31,7 +31,7 @@ def setup():
     """Quiet logs (no line for every HTTP request) and a fresh pantry and staff roster."""
     for name in ("httpx", "httpcore", "openai", "azure"):
         logging.getLogger(name).setLevel(logging.WARNING)
-    kitchen.reset_kitchen()
+    initialize_restaurant(reset=True)
 
 
 DEMO_DAY = datetime(2026, 11, 19)     # Thursday, 19 November 2026 – autumn

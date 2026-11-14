@@ -1,24 +1,23 @@
 """
-restaurant_pantry_db.py
+restaurant_db.py
 ------------
-A tiny file-based "database" for Giovanni's pizzeria demo.
+A small JSON-backed store for the restaurant workshop.
 
-No real DB engine, just a JSON file (restaurant_store.json) that is read and
-written by simple functions. This keeps the demo runnable and the daily plan
-recallable across cells / kernel restarts.
+The store is shared by the menu, pantry, daily plan, and staffing helpers.
 
 Tables (top-level keys in the JSON file):
   - menu        : the classic pizzas (fixed), their sales share and recipe (kg/pizza)
   - soup_base   : the fixed base of the soup of the day and its recipe (kg/portion)
   - pantry      : current stock per ingredient (kg)
   - daily_plan  : the last persisted plan per day (recallable)
+  - staff       : employees, availability, and vacation ranges
 """
 
+from copy import deepcopy
 import json
 import os
 from datetime import datetime
 
-# The JSON file lives next to this module.
 STORE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "restaurant_store.json")
 
 # --- Seed data used when the store does not exist yet ---
@@ -45,19 +44,42 @@ _DEFAULT_PANTRY = {  # current stock in kg
     "vegetable_stock": 5, "potatoes": 4, "onions": 1, "cream": 0.5,
 }
 
+_DEFAULT_STAFF = {
+    "Mario":   {"role": "cook",    "weekly_hours": 42, "available": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"], "vacations": []},
+    "Luca":    {"role": "cook",    "weekly_hours": 40, "available": ["Wednesday","Thursday","Friday","Saturday","Sunday"],           "vacations": [["2026-08-01","2026-08-14"]]},
+    "Elena":   {"role": "cook",    "weekly_hours": 32, "available": ["Friday","Saturday","Sunday"],                                   "vacations": []},
+    "Giulia":  {"role": "service", "weekly_hours": 38, "available": ["Thursday","Friday","Saturday","Sunday"],                        "vacations": []},
+    "Antonio": {"role": "service", "weekly_hours": 40, "available": ["Tuesday","Wednesday","Thursday","Friday","Saturday"],          "vacations": []},
+    "Sofia":   {"role": "service", "weekly_hours": 30, "available": ["Friday","Saturday","Sunday"],                                   "vacations": [["2026-07-28","2026-08-03"]]},
+    "Marco":   {"role": "service", "weekly_hours": 24, "available": ["Saturday","Sunday"],                                            "vacations": []},
+}
+
+
+def _default_store():
+    return {
+        "menu": deepcopy(_DEFAULT_MENU),
+        "soup_base": deepcopy(_DEFAULT_SOUP_BASE),
+        "pantry": deepcopy(_DEFAULT_PANTRY),
+        "daily_plan": {},
+        "staff": deepcopy(_DEFAULT_STAFF),
+    }
+
 
 # ----------------------------------------------------------------------
 # Low-level load / save
 # ----------------------------------------------------------------------
 def _load():
-    """Read the whole store from disk (or return a fresh seeded store)."""
-    defaults = {"menu": _DEFAULT_MENU, "soup_base": _DEFAULT_SOUP_BASE, "pantry": _DEFAULT_PANTRY, "daily_plan": {}}
+    """Read the store from disk, or return a fresh seeded store."""
+    store = _default_store()
     if not os.path.exists(STORE_PATH):
-        return json.loads(json.dumps(defaults))   # deep copy of the seed data
+        return store
     with open(STORE_PATH, "r", encoding="utf-8") as f:
-        store = json.load(f)
-    for key, value in defaults.items():           # older stores may miss a table
-        store.setdefault(key, json.loads(json.dumps(value)))
+        saved_store = json.load(f)
+    if not isinstance(saved_store, dict):
+        raise ValueError(f"Restaurant store must contain a JSON object: {STORE_PATH}")
+    for key, value in store.items():
+        saved_store.setdefault(key, value)
+    store = saved_store
     return store
 
 
@@ -67,11 +89,9 @@ def _save(store):
         json.dump(store, f, indent=2, ensure_ascii=False)
 
 
-def init_store(reset: bool = False):
-    """Create the JSON store with seed data. Pass reset=True to overwrite it."""
-    if reset and os.path.exists(STORE_PATH):
-        os.remove(STORE_PATH)
-    store = _load()
+def initialize_restaurant(reset: bool = False):
+    """Create the store; pass reset=True to replace it with all seed data."""
+    store = _default_store() if reset else _load()
     _save(store)
     return STORE_PATH
 
@@ -124,5 +144,47 @@ def save_daily_plan(day, guests, soup, order_list, staffing):
     _save(store)
 
 
-# Ensure the file exists on import so the tools can read it immediately.
-init_store(reset=False)
+# ----------------------------------------------------------------------
+# Staffing helpers
+# ----------------------------------------------------------------------
+def get_staff():
+    """Return the full roster: {name: {role, weekly_hours, available, vacations}}."""
+    return _load()["staff"]
+
+
+def _on_vacation(emp, date_str):
+    """True if date_str falls inside any of the employee's vacation ranges."""
+    d = datetime.strptime(date_str, "%Y-%m-%d").date()
+    for start, end in emp.get("vacations", []):
+        if datetime.strptime(start, "%Y-%m-%d").date() <= d <= datetime.strptime(end, "%Y-%m-%d").date():
+            return True
+    return False
+
+
+def available_staff(date_str):
+    """Return staff rostered for the weekday and not on vacation."""
+    weekday = datetime.strptime(date_str, "%Y-%m-%d").strftime("%A")
+    out = {"cook": [], "service": []}
+    for name, emp in get_staff().items():
+        if weekday in emp["available"] and not _on_vacation(emp, date_str):
+            out[emp["role"]].append(name)
+    return out
+
+
+def add_vacation(name, start, end):
+    """Add a vacation range [start, end] (ISO dates) for an employee."""
+    store = _load()
+    store["staff"][name]["vacations"].append([start, end])
+    _save(store)
+
+
+def add_employee(name, role, available, weekly_hours=40, vacations=None):
+    """Add a new employee to the roster."""
+    store = _load()
+    store["staff"][name] = {
+        "role": role,
+        "weekly_hours": weekly_hours,
+        "available": available,
+        "vacations": vacations or [],
+    }
+    _save(store)

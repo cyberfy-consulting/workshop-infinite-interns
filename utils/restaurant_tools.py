@@ -9,9 +9,8 @@ from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from langgraph_swarm.handoff import METADATA_KEY_HANDOFF_DESTINATION
 
-from utils.booking_system_db import booking_connection
-from utils.restaurant_pantry_db import get_menu, get_pantry, get_soup_base, init_store
-from utils.restaurant_staffing_db import get_staff, init_staffing, _on_vacation
+from utils.booking_system_db import get_reservation_summary
+from utils.restaurant_db import _on_vacation, get_menu, get_pantry, get_soup_base, get_staff
 
 
 # ======================================================================
@@ -45,15 +44,6 @@ WINE_LIST = {  # used by the bonus sommelier agent
     "Lambrusco": "sparkling red – spicy salami, Diavola",
     "Prosecco": "sparkling white – aperitivo, light white pizzas",
 }
-
-
-# ======================================================================
-# Setup helpers
-# ======================================================================
-def reset_kitchen():
-    """Fresh pantry and staff roster (seed data)."""
-    init_store(reset=True)
-    init_staffing(reset=True)
 
 
 def weekday(date: str) -> str:
@@ -143,12 +133,8 @@ def _handoff_tool(agent_name: str):
 @tool("get_reservations")
 def get_reservations(date: str) -> str:
     """Number of already-booked guests for a date (YYYY-MM-DD), summing party sizes."""
-    with booking_connection() as conn:
-        booked, n = conn.execute(
-            "SELECT COALESCE(SUM(party_size), 0), COUNT(*) FROM reservations WHERE date(reservation_time) = ?",
-            (date,),
-        ).fetchone()
-    return f"{booked} guests booked across {n} reservations on {date}."
+    booked, count = get_reservation_summary(date)
+    return f"{booked} guests booked across {count} reservations on {date}."
 
 
 @tool("get_walkin_baseline")

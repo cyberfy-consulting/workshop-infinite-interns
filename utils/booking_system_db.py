@@ -42,6 +42,19 @@ def booking_connection(db_path: str = DB_PATH) -> Generator[sqlite3.Connection, 
         conn.close()
 
 
+def get_reservation_summary(reservation_date: str, db_path: str = DB_PATH) -> tuple[int, int]:
+    """Return the booked guest count and reservation count for a date."""
+    with booking_connection(db_path) as conn:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(party_size), 0), COUNT(*) FROM reservations "
+            "WHERE date(reservation_time) = ?",
+            (reservation_date,),
+        ).fetchone()
+    if row is None:
+        raise RuntimeError("The reservation summary query returned no result.")
+    return int(row[0]), int(row[1])
+
+
 def _expand_table_types():
     """Expand TABLE_TYPES into one row per physical table, with a unique label."""
     rows = []
