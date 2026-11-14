@@ -1,7 +1,7 @@
 from datetime import datetime, time
 from mcp.server.fastmcp import FastMCP
 
-from utils.booking_db import CLOSING_TIME, OPENING_TIME, booking_connection
+from utils.booking_system_db import CLOSING_TIME, OPENING_TIME, booking_connection
 
 # Initialize the MCP server
 mcp = FastMCP("BookingDB", log_level="WARNING")

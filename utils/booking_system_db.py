@@ -4,7 +4,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "booking.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "booking_system.db")
 
 TODAY = date(2026, 5, 29)   # the fixed "today" of the demo. Summer day to test differen scenarios
 OPENING_TIME = "18:00"

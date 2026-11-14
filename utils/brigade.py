@@ -43,8 +43,8 @@ DEMO_BOOKINGS = [                     # (name, hour, party size, table) – all 
 
 def prepare_demo_day():
     """Rebuild the booking database from Step 3 and add the bookings for the demo evening."""
-    from utils.booking_db import initialize_reservations, initialize_tables
-    from utils.booking_mcp_server import add_reservation
+    from utils.booking_system_db import initialize_reservations, initialize_tables
+    from utils.booking_system_mcp_server import add_reservation
 
     initialize_tables()
     initialize_reservations()

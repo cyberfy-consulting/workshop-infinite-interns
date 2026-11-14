@@ -11,8 +11,8 @@ from langchain_core.messages import (
 )
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from IPython.display import HTML, display
-from utils.booking_db import CLOSING_TIME, OPENING_TIME, booking_connection
-from utils.restaurant_layout import restaurant_html
+from utils.booking_system_db import CLOSING_TIME, OPENING_TIME, booking_connection
+from utils.visualize_restaurant import restaurant_html
 
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)

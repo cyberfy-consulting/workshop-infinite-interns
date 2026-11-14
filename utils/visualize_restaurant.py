@@ -1,4 +1,4 @@
-from utils.booking_db import TODAY, booking_connection
+from utils.booking_system_db import TODAY, booking_connection
 
 # Table positions as (column, row) on a grid, following the arrangement of the sketch.
 POSITIONS = {

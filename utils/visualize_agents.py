@@ -1,5 +1,5 @@
 """
-agent_viz.py
+visualize_agents.py
 ------------
 Live visualisations for Step 5 (multi-agent patterns).
 

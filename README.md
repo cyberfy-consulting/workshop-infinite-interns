@@ -44,8 +44,8 @@ To run the workshop locally, follow these steps:
 The workshop is contained in a Jupyter notebook and includes several utility scripts. The project structure is as follows:
 
 - `workshop.ipynb`: The Jupyter Notebook used during the workshop.
-- `utils/booking_db.py`: Creates an SQLite database for booking operations.
-- `utils/booking_mcp_server.py`: MCP server for booking operations.
+- `utils/booking_system_db.py`: Creates an SQLite database for booking operations.
+- `utils/booking_system_mcp_server.py`: MCP server for booking operations.
 - `utils/helper_functions.py`: Shared helper functions.
 - `utils/loyalty_db.py`: Creates an SQLite database for loyalty operations.
 - `utils/loyalty_mcp_server.py`: MCP server for loyalty operations.

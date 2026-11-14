@@ -9,7 +9,7 @@ from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from langgraph_swarm.handoff import METADATA_KEY_HANDOFF_DESTINATION
 
-from utils.booking_db import booking_connection
+from utils.booking_system_db import booking_connection
 from utils.pantry_db import get_menu, get_pantry, get_soup_base, init_store
 from utils.staffing_db import get_staff, init_staffing, _on_vacation
 
