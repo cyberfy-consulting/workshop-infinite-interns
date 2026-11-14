@@ -1,6 +1,6 @@
 # Infinite Interns SDS 2025 - Get AI Agents to Do Your Busy Work
 
-This is the repository for the Infinite Interns workshop at SDS 2025, held by Cyberfy Consulting. 
+This is the repository for the Infinite Interns workshop, held by Cyberfy Consulting. 
 
 ![Slide1](./images/slides/Slide1.png)
 
@@ -21,7 +21,7 @@ In this workshop, the participants will learn how to:
 
 ## Setup
 
-To run the workshop locally, follow these steps:
+#### To run the workshop locally, follow these steps:
 
 1. Clone the repository:
    ```bash
@@ -39,14 +39,17 @@ To run the workshop locally, follow these steps:
    ```
 4. Configure your credentials when prompted in the notebook.
 
+#### Run the workshop online with mybinder.org
+
+Binder allows you to create custom computing environments that can be shared and used by many remote users. One such deployment lives at mybinder.org, and is free to use.
+
+https://mybinder.org/v2/gh/cyberfy-consulting/workshop-infinite-interns/main?urlpath=%2Fdoc%2Ftree%2Fworkshop.ipynb
+
+
 ## Project Structure
 
-The workshop is contained in a Jupyter notebook and includes several utility scripts. The project structure is as follows:
+The workshop is contained in a Jupyter notebook and includes several utility scripts:
 
 - `workshop.ipynb`: The Jupyter Notebook used during the workshop.
-- `utils/booking_system_db.py`: Creates an SQLite database for booking operations.
-- `utils/booking_system_mcp_server.py`: MCP server for booking operations.
-- `utils/helper_functions.py`: Shared helper functions.
-- `utils/loyalty_db.py`: Creates an SQLite database for loyalty operations.
-- `utils/loyalty_mcp_server.py`: MCP server for loyalty operations.
+- `utils/*`: Technical stuff that helps reduce the complexity within the workshop material.
 - `images/`: Directory containing images and slides used in the notebook.
