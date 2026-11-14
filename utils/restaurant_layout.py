@@ -1,6 +1,4 @@
-import sqlite3
-
-from utils.booking_db import DB_PATH, TODAY
+from utils.booking_db import TODAY, booking_connection
 
 # Table positions as (column, row) on a grid, following the arrangement of the sketch.
 POSITIONS = {
@@ -63,9 +61,8 @@ def restaurant_html(booked=None, new=()):
     new: table labels of reservations added since the last call, shown in blue.
     """
     booked = booked or {}
-    conn = sqlite3.connect(DB_PATH)
-    rows = conn.execute("SELECT label, outside, waterfront, shade, seats FROM tables").fetchall()
-    conn.close()
+    with booking_connection() as conn:
+        rows = conn.execute("SELECT label, outside, waterfront, shade, seats FROM tables").fetchall()
 
     parts = [BACKGROUND]
     for label, outside, waterfront, shade, seats in rows:

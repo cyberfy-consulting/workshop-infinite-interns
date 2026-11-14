@@ -1,6 +1,4 @@
 import logging
-import os
-import sqlite3
 from typing import List
 
 import pandas as pd
@@ -13,12 +11,11 @@ from langchain_core.messages import (
 )
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from IPython.display import HTML, display
+from utils.booking_db import booking_connection
 from utils.restaurant_layout import restaurant_html
 
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)
-
-DB_PATH = os.path.join(os.path.dirname(__file__), "booking.db")
 
 #restaurant reservation hours
 OPENING_TIME = "18:00"
@@ -58,46 +55,40 @@ WEATHER_FROM_CODE = {
     99: "Thunderstorm with heavy hail",
 }
 
-_previous_ids = None   # ids at the first listing = initial setup, never highlighted. Only new reservations with each call are highlighted
+_previous_ids = None  # The first listing establishes the baseline for later comparisons.
 
 def list_reservations_df():
     global _previous_ids
-    conn = sqlite3.connect(DB_PATH)
-    df = pd.read_sql(
-        "SELECT reservation_id, name, reservation_time, party_size, outside, waterfront, shade, table_id FROM reservations",
-        conn
-    )
-    conn.close()
-    try:
-        df["reservation_time"] = pd.to_datetime(df["reservation_time"], format='mixed') #parses mixed time formats and returns consistent datetime
-        #return integers 0,1 as booleans
-        df["outside"] = df["outside"].astype(bool) 
-        df["waterfront"] = df["waterfront"].fillna(0).astype(bool)
-        df["shade"] = df["shade"].fillna(0).astype(bool) 
-    except (ValueError, TypeError):
-        pass # data isn't readable as dates 
+    with booking_connection() as conn:
+        df = pd.read_sql_query(
+            "SELECT reservation_id, name, reservation_time, party_size, outside, waterfront, shade, table_id FROM reservations",
+            conn,
+        )
+
+    df["reservation_time"] = df["reservation_time"].astype(str)
+    for column in ("outside", "waterfront", "shade"):
+        df[column] = df[column].fillna(0).replace({0: False, 1: True})
     
     ids = set(df["reservation_id"])
     if _previous_ids is None:
-        _previous_ids = ids    # first call: nothing is highlighted with initial reservation list
+        _previous_ids = ids  # Seed reservations are not highlighted on the first listing.
     
-    #reservations added since the first listing
-    new_ids = ids - _previous_ids      
-    _previous_ids = ids # the next call compares against this listing
+    # Reservations added since the previous listing.
+    new_ids = ids - _previous_ids
+    _previous_ids = ids
     
-    is_dt = pd.api.types.is_datetime64_any_dtype(df["reservation_time"])
     # yellow background for every new reservation
     styled = df.style.apply(
         lambda row: ["background-color: #98c3f7" if row["reservation_id"] in new_ids else ""] * len(row),
         axis=1,
     ).hide(axis="index")
-    if is_dt:
-        styled = styled.format({"reservation_time": "{:%Y-%m-%d %H:%M}"})  # drops row-number index, no seconds in reservation_time
     display(styled)
 
     #floor plan: booked tables red with "guest, time" underneath, new reservations blue
     with_table = df.dropna(subset=["table_id"])
-    times = with_table["reservation_time"].dt.strftime("%H:%M") if is_dt else with_table["reservation_time"].astype(str)
+    raw_times = with_table["reservation_time"]
+    time_parts = raw_times.str.rsplit(" ", n=1).str[-1]
+    times = time_parts.str.slice(0, 5).where(time_parts.str.contains(":"), raw_times)
     booked = dict(zip(with_table["table_id"], with_table["name"] + ", " + times))
     new = set(df.loc[df["reservation_id"].isin(new_ids), "table_id"].dropna())
     return HTML(restaurant_html(booked=booked, new=new))

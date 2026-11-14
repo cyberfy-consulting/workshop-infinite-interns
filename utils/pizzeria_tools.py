@@ -1,5 +1,4 @@
 # Giovanni's kitchen toolbox for Step 5 (multi-agent patterns).
-import sqlite3
 from datetime import datetime
 from typing import Annotated, Any
 
@@ -10,7 +9,7 @@ from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from langgraph_swarm.handoff import METADATA_KEY_HANDOFF_DESTINATION
 
-from utils.helper_functions import DB_PATH as BOOKING_DB_PATH
+from utils.booking_db import booking_connection
 from utils.pantry_db import get_menu, get_pantry, get_soup_base, init_store
 from utils.staffing_db import get_staff, init_staffing, _on_vacation
 
@@ -52,8 +51,7 @@ WINE_LIST = {  # used by the bonus sommelier agent
 # Setup helpers
 # ======================================================================
 def reset_kitchen():
-    """Fresh pantry and staff roster (seed data). Also makes sure the booking DB from Step 3 exists."""
-    import utils.booking_db  # noqa: F401  (creates utils/booking.db on first import if it is missing)
+    """Fresh pantry and staff roster (seed data)."""
     init_store(reset=True)
     init_staffing(reset=True)
 
@@ -145,7 +143,7 @@ def _handoff_tool(agent_name: str):
 @tool("get_reservations")
 def get_reservations(date: str) -> str:
     """Number of already-booked guests for a date (YYYY-MM-DD), summing party sizes."""
-    with sqlite3.connect(BOOKING_DB_PATH) as conn:
+    with booking_connection() as conn:
         booked, n = conn.execute(
             "SELECT COALESCE(SUM(party_size), 0), COUNT(*) FROM reservations WHERE date(reservation_time) = ?",
             (date,),

@@ -1,10 +1,22 @@
 import os
 import sqlite3
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import date
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "booking.db")
 
 TODAY = date(2026, 5, 29)   # the fixed "today" of the demo. Summer day to test differen scenarios
+
+
+@contextmanager
+def booking_connection(db_path: str = DB_PATH) -> Generator[sqlite3.Connection, None, None]:
+    """Open a short-lived connection to the booking database and always close it."""
+    conn = sqlite3.connect(db_path)
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 # (outside, waterfront, shade, seats, count)
 # waterfront/shade only apply to outside tables, so they stay None for inside tables.
@@ -20,7 +32,7 @@ TABLE_TYPES = [
 ]
 
 
-def _table_rows():
+def _expand_table_types():
     """Expand TABLE_TYPES into one row per physical table, with a unique label."""
     rows = []
     inside_idx = outside_idx = 1
@@ -35,83 +47,33 @@ def _table_rows():
             rows.append((label, outside, waterfront, shade, seats))
     return rows
 
-def create_tables_table(db_path: str = DB_PATH, rebuild: bool = False):
-    """Create the `tables` table from TABLE_TYPES. rebuild=True builds table from scratch to avoid duplicates"""
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-
-    if rebuild:
+def initialize_tables(db_path: str = DB_PATH):
+    """Recreate the tables table from the static TABLE_TYPES configuration."""
+    with booking_connection(db_path) as conn:
+        cur = conn.cursor()
         cur.execute("DROP TABLE IF EXISTS tables")
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS tables (
-        id INTEGER PRIMARY KEY,
-        label TEXT NOT NULL UNIQUE,
-        outside BOOLEAN NOT NULL DEFAULT FALSE,
-        waterfront BOOLEAN,
-        shade BOOLEAN,
-        seats INTEGER NOT NULL,
-        CHECK (outside = 1 OR (waterfront IS NULL AND shade IS NULL))
-    )
-    """)
-
-    table_rows = _table_rows()
-    if table_rows:
-        cur.executemany(
-            "INSERT INTO tables (label, outside, waterfront, shade, seats) VALUES (?, ?, ?, ?, ?)",
-            table_rows,
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS tables (
+            id INTEGER PRIMARY KEY,
+            label TEXT NOT NULL UNIQUE,
+            outside BOOLEAN NOT NULL DEFAULT FALSE,
+            waterfront BOOLEAN,
+            shade BOOLEAN,
+            seats INTEGER NOT NULL,
+            CHECK (outside = 1 OR (waterfront IS NULL AND shade IS NULL))
         )
+        """)
 
-    conn.commit()
-    conn.close()
-    
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
+        table_rows = _expand_table_types()
+        if table_rows:
+            cur.executemany(
+                "INSERT INTO tables (label, outside, waterfront, shade, seats) VALUES (?, ?, ?, ?, ?)",
+                table_rows,
+            )
 
-    if rebuild:
-        cur.execute("DROP TABLE IF EXISTS tables")
+        conn.commit()
 
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS tables (
-        id INTEGER PRIMARY KEY,
-        label TEXT NOT NULL UNIQUE,
-        outside BOOLEAN NOT NULL DEFAULT FALSE,
-        waterfront BOOLEAN,
-        shade BOOLEAN,
-        seats INTEGER NOT NULL,
-        CHECK (outside = 1 OR (waterfront IS NULL AND shade IS NULL))
-    )
-    """)
-
-    table_rows = _table_rows()
-    if table_rows:
-        cur.executemany(
-            "INSERT INTO tables (label, outside, waterfront, shade, seats) VALUES (?, ?, ?, ?, ?)",
-            table_rows,
-        )
-
-    conn.commit()
-    conn.close()
-
-
-# --- One-time DB setup ---
-if not os.path.exists(DB_PATH):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-
-    # Create a simple reservations table: name, reservation_time, party_size
-    cur.execute("""
-    CREATE TABLE IF NOT EXISTS reservations (
-        reservation_id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL,
-        reservation_time DATETIME NOT NULL,
-        party_size INTEGER NOT NULL,
-        outside BOOLEAN DEFAULT FALSE,
-        waterfront BOOLEAN DEFAULT FALSE,
-        shade BOOLEAN DEFAULT FALSE,
-        table_id STRING
-    )
-    """)
 
 SEED_RESERVATIONS = [
         ("Alice", f"{TODAY} 20:30", 2, False, False, False, "TI1"),
@@ -121,41 +83,33 @@ SEED_RESERVATIONS = [
 ]
 
 
-def reset_reservations(db_path: str = DB_PATH):
-    """Drop and recreate the reservations table, with only the sample entries."""
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("DROP TABLE IF EXISTS reservations")
-    cur.execute("""
-    CREATE TABLE reservations (
-        reservation_id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL,
-        reservation_time DATETIME NOT NULL,
-        party_size INTEGER NOT NULL,
-        outside BOOLEAN DEFAULT FALSE,
-        waterfront BOOLEAN DEFAULT FALSE,
-        shade BOOLEAN DEFAULT FALSE,
-        table_id STRING
-    )
-    """)
-    cur.executemany(
-        "INSERT INTO reservations (name, reservation_time, party_size, outside, waterfront, shade, table_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        SEED_RESERVATIONS,
-    )
-    conn.commit()
-    conn.close()
+def initialize_reservations(db_path: str = DB_PATH):
+    """Recreate the reservations table with the sample reservations."""
+    with booking_connection(db_path) as conn:
+        conn.execute("DROP TABLE IF EXISTS reservations")
+        conn.execute("""
+        CREATE TABLE reservations (
+            reservation_id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            reservation_time DATETIME NOT NULL,
+            party_size INTEGER NOT NULL,
+            outside BOOLEAN DEFAULT FALSE,
+            waterfront BOOLEAN DEFAULT FALSE,
+            shade BOOLEAN DEFAULT FALSE,
+            table_id STRING
+        )
+        """)
+        conn.executemany(
+            "INSERT INTO reservations (name, reservation_time, party_size, outside, waterfront, shade, table_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            SEED_RESERVATIONS,
+        )
+        conn.commit()
 
-
-# --- One-time DB setup ---
-if not os.path.exists(DB_PATH):
-    reset_reservations()
-
-# -------------------------
 
 if __name__ == "__main__":
     import sys
     if "--rebuild" in sys.argv:
-        create_tables_table(rebuild=True)
-        reset_reservations()
+        initialize_tables()
+        initialize_reservations()
     else:
         print("Nothing to do. Use --rebuild to recreate the tables and reservations.")
