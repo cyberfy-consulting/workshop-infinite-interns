@@ -50,7 +50,7 @@ def add_reservation(name: str, reservation_time: datetime, party_size: int, tabl
     conn.commit()
     conn.close()
     return (
-        f"Reservation for {name} at {reservation_time} for {party_size} {"people" if party_size > 1 else "person"}"
+        f"Reservation for {name} at {reservation_time} for {party_size} {'people' if party_size > 1 else 'person'}"
         f" added {'outside' if outside else 'inside'}, for table {table_id} ({'waterfront' if outside and waterfront else 'no waterfront'},"
         f" {'shade' if outside and shade else 'no shade'})"
     )
@@ -90,7 +90,7 @@ def list_reservations(reservation_time: datetime) -> str: #pass day of reservati
     result = ["Reservations:"] if rows else "No reservations found."
     for row in rows:
         name, reservation_time, party_size, outside, waterfront, shade, table_id = row
-        result.append(f"{name} at {reservation_time} for {party_size} {"people" if party_size > 1 else "person"}"
+        result.append(f"{name} at {reservation_time} for {party_size} {'people' if party_size > 1 else 'person'}"
         f" {'outside' if outside else 'inside'} for table {table_id} ({'waterfront' if outside and waterfront else 'no waterfront'},"
         f" {'shade' if outside and shade else 'no shade'})")
 
