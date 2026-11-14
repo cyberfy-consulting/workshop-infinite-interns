@@ -6,7 +6,7 @@ This is the repository for the Infinite Interns workshop, held by Cyberfy Consul
 
 In this workshop, the participants will learn how to:
 
-* Make direct API calls to Azure AI Foundry
+* Make direct API calls to Azure AI Foundry (or any similar AI as a Service API)
 * Build custom agents with LangGraph
 * Integrate local and online tools via the Model Context Protocol (MCP)
 * Orchestrate multi-agent workflows to automate complex tasks
