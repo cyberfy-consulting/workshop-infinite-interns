@@ -1,9 +1,9 @@
 """
-pantry_db.py
+restaurant_pantry_db.py
 ------------
 A tiny file-based "database" for Giovanni's pizzeria demo.
 
-No real DB engine, just a JSON file (pizzeria_store.json) that is read and
+No real DB engine, just a JSON file (restaurant_store.json) that is read and
 written by simple functions. This keeps the demo runnable and the daily plan
 recallable across cells / kernel restarts.
 
@@ -19,7 +19,7 @@ import os
 from datetime import datetime
 
 # The JSON file lives next to this module.
-STORE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pizzeria_store.json")
+STORE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "restaurant_store.json")
 
 # --- Seed data used when the store does not exist yet ---
 _DEFAULT_MENU = {

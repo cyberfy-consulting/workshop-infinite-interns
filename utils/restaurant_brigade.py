@@ -1,5 +1,5 @@
 """
-brigade.py
+restaurant_brigade.py
 ----------
 Helpers for Step 5 (multi-agent patterns) that keep the notebook short and easy to read.
 Nothing in here is needed to *understand* the three patterns – it is the plumbing around them.
@@ -20,8 +20,8 @@ from typing import Literal, TypedDict
 from langchain.agents import create_agent
 from langchain.tools import tool
 
-from utils import pizzeria_tools as kitchen
-from utils.pantry_db import save_daily_plan
+from utils import restaurant_tools as kitchen
+from utils.restaurant_pantry_db import save_daily_plan
 
 
 # ======================================================================
@@ -118,7 +118,7 @@ def after_stock_check(plan) -> Literal["soup_agent", "purchasing_agent"]:
 
 
 def save_plan(plan):
-    """Save the finished day plan to utils/pizzeria_store.json (recall it with get_daily_plan)."""
+    """Save the finished day plan to utils/restaurant_store.json (recall it with get_daily_plan)."""
     save_daily_plan(plan["date"], plan.get("guests"), plan.get("soup"), plan.get("order"), plan.get("staffing"))
     return {}
 

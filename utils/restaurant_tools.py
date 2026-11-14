@@ -10,13 +10,13 @@ from langgraph.types import Command
 from langgraph_swarm.handoff import METADATA_KEY_HANDOFF_DESTINATION
 
 from utils.booking_system_db import booking_connection
-from utils.pantry_db import get_menu, get_pantry, get_soup_base, init_store
-from utils.staffing_db import get_staff, init_staffing, _on_vacation
+from utils.restaurant_pantry_db import get_menu, get_pantry, get_soup_base, init_store
+from utils.restaurant_staffing_db import get_staff, init_staffing, _on_vacation
 
 
 # ======================================================================
 # settings are read every time a tool is called; can be changed from notebook e.g.
-# from utils import pizzeria_tools as kitchen
+# from utils import restaurant_tools as kitchen
 # kitchen.OUT_OF_STOCK.add("porcini")
 # kitchen.WALKINS["Saturday"] = 140
 # ======================================================================

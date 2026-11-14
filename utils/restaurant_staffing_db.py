@@ -1,8 +1,8 @@
 """
-staffing_db.py
+restaurant_staffing_db.py
 --------------
 A tiny file-based "database" for the pizzeria's staff, in the same spirit as
-pantry_db.py: no real DB engine, just a JSON file (staffing_store.json) that is
+restaurant_pantry_db.py: no real DB engine, just a JSON file (restaurant_staffing_store.json) that is
 read and written by simple functions.
 
 It stores, per employee:
@@ -20,7 +20,7 @@ import json
 import os
 from datetime import datetime
 
-STORE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "staffing_store.json")
+STORE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "restaurant_staffing_store.json")
 
 # --- Seed roster used when the store does not exist yet ---
 _DEFAULT_STAFF = {

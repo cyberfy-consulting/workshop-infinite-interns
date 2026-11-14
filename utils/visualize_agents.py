@@ -641,7 +641,7 @@ class _LiveView:
                     self._event("🔍", "Stock check passed: the soup ingredient is available", "hand")
             elif node in ("persist", "save_plan"):
                 self.status[node] = "done"
-                self._event("💾", "Day plan saved to <code>utils/pizzeria_store.json</code>", "hand")
+                self._event("💾", "Day plan saved to <code>utils/restaurant_store.json</code>", "hand")
             else:
                 self.status[node] = "done"
                 self._event("⚙️", f"{_esc(node)} done")
@@ -980,7 +980,7 @@ def _network_layout(swarm):
 # Public runners
 # ======================================================================
 def _request(date, wish):
-    from utils.pizzeria_tools import request
+    from utils.restaurant_tools import request
     return request(date, wish)
 
 
