@@ -1,6 +1,6 @@
 langgraph==1.2.22
 langchain==1.4.10
-langchain-core==1.8.0
+langchain-core==1.7.7
 langchain-mcp-adapters==0.3.2
 langchain-azure-ai==1.3.1
 langgraph-supervisor==0.0.31
