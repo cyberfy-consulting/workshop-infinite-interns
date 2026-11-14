@@ -1,11 +1,9 @@
 import logging
 import os
 import sqlite3
+from typing import List
+
 import pandas as pd
-import time, textwrap
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from typing import List, Callable
 from langchain_core.messages import (
     BaseMessage,
     SystemMessage,
@@ -13,11 +11,7 @@ from langchain_core.messages import (
     AIMessage,
     ToolMessage,
 )
-from langchain_core.tools import BaseTool, tool as create_tool
-from langchain_core.runnables import RunnableConfig
-from langgraph.types import interrupt 
-from langgraph.prebuilt.interrupt import HumanInterruptConfig, HumanInterrupt
-
+from langchain.agents.middleware import HumanInTheLoopMiddleware
 from IPython.display import HTML, display
 from utils.restaurant_layout import restaurant_html
 
@@ -111,30 +105,22 @@ def list_reservations_df():
 
 
 def pretty_print_chunk(log: dict):
-    """
-    Nicely prints a single agent log dict of the form:
-      {
-        "agent_name": {
-          "messages": [HumanMessage(...), AIMessage(...), ToolMessage(...), ...]
-        }
-      }
-    """
-    # ---- handle interrupts first ----
     if "__interrupt__" in log:
-        # the value is typically a 1‐tuple containing an Interrupt instance
-        intr = log["__interrupt__"]
-        if isinstance(intr, tuple):
-            intr = intr[0]
         print("🔔 Interrupt received:")
-        for idx, entry in enumerate(intr.value, start=1):
-            ar     = entry.get("action_request", {})
-            config = entry.get("config", {})
-            desc   = entry.get("description", "")
-            print(f" {idx}. Action: {ar.get('action')}  args={ar.get('args')}")
-            print(f"    Description: {desc}")
-            print(f"    Config:      {config}")
+        interrupts = log["__interrupt__"]
+        if not isinstance(interrupts, (tuple, list)):
+            interrupts = (interrupts,)
+        for intr in interrupts:
+            value = intr.value
+            for idx, (action, config) in enumerate(
+                zip(value["action_requests"], value["review_configs"], strict=True),
+                start=1,
+            ):
+                print(f" {idx}. Action: {action.get('name')}  args={action.get('args')}")
+                print(f"    Description: {action.get('description', '')}")
+                print(f"    Decisions:   {config.get('allowed_decisions', [])}")
         print()
-        return   # nothing more to do
+        return
 
     for agent_name, agent_data in log.items():
         print(f"Agent: {agent_name}")
@@ -143,39 +129,7 @@ def pretty_print_chunk(log: dict):
             print("  (no messages)\n")
             continue
 
-        for idx, msg in enumerate(messages, start=1):
-            # Message type (class name)
-            msg_type = msg.__class__.__name__
-            print(f" {idx}. {msg_type}")
-            # Core fields
-            content = getattr(msg, 'content', '')
-            print("    Content:")
-            for line in content.splitlines():
-                    print(f"      {line}")
-
-            # Additional kwargs (e.g. tool_calls embedded)
-            additional = getattr(msg, "additional_kwargs", None)
-            if additional:
-                # If tool_calls exist under additional_kwargs, print them
-                tcs = additional.get("tool_calls") or []
-                if tcs:
-                    print("    Tool calls:")
-                    for tc in tcs:
-                        name = tc.get("name") or tc.get("function", {}).get("name")
-                        args = tc.get("args") or tc.get("function", {}).get("arguments")
-                        print(f"      • {name} args={args}")
-
-            # Also check for top‐level .tool_calls list
-            top_tcs = getattr(msg, "tool_calls", [])
-            if top_tcs:
-                print("    Tool calls (top‐level):")
-                for tc in top_tcs:
-                    name = tc.get("name")
-                    args = tc.get("args")
-                    print(f"      • {name} args={args}")
-
-            print()  # blank line between messages
-        print()  # blank line between agents
+        pretty_print(messages)  # blank line between agents
 
 
 
@@ -208,51 +162,11 @@ def pretty_print(messages: List[BaseMessage]) -> None:
         print(f"{label} {msg.content}\n")
 
 
-def add_human_in_the_loop(
-    tool: Callable | BaseTool,
-    *,
-    interrupt_config: HumanInterruptConfig = None,
-) -> BaseTool:
-    """Wrap a tool to support human-in-the-loop review.""" 
-    if not isinstance(tool, BaseTool):
-        tool = create_tool(tool)
-
-    if interrupt_config is None:
-        interrupt_config = {
-            "allow_accept": True,
-            "allow_edit": True,
-            "allow_respond": True,
+HUMAN_IN_THE_LOOP_MIDDLEWARE = HumanInTheLoopMiddleware(
+    interrupt_on={
+        "get_weather": {
+            "allowed_decisions": ["approve", "edit", "respond"],
+            "description": "Please review the tool call",
         }
-
-    @create_tool(  
-        tool.name,
-        description=tool.description,
-        args_schema=tool.args_schema
-    )
-    async def call_tool_with_interrupt(config: RunnableConfig, **tool_input):
-        request: HumanInterrupt = {
-            "action_request": {
-                "action": tool.name,
-                "args": tool_input
-            },
-            "config": interrupt_config,
-            "description": "Please review the tool call"
-        }
-        response = interrupt([request])[0]  
-        # approve the tool call
-        if response["type"] == "accept":
-            tool_response = await tool.ainvoke(tool_input, config)
-        # update tool call args
-        elif response["type"] == "edit":
-            tool_input = response["args"]["args"]
-            tool_response = await tool.ainvoke(tool_input, config)
-        # respond to the LLM with user feedback
-        elif response["type"] == "response":
-            user_feedback = response["args"]
-            tool_response = user_feedback
-        else:
-            raise ValueError(f"Unsupported interrupt response type: {response['type']}")
-
-        return tool_response
-
-    return call_tool_with_interrupt
+    }
+)
