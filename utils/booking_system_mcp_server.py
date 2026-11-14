@@ -2,9 +2,10 @@ from datetime import datetime, time
 from mcp.server.fastmcp import FastMCP
 
 from utils.booking_system_db import CLOSING_TIME, OPENING_TIME, booking_connection
+from utils.helper_functions import LOG_LEVEL_NAME
 
 # Initialize the MCP server
-mcp = FastMCP("BookingDB", log_level="WARNING")
+mcp = FastMCP("BookingDB", log_level=LOG_LEVEL_NAME)
 
 @mcp.tool()
 def add_reservation(name: str, reservation_time: datetime, party_size: int, table_id: str, outside: bool = False, waterfront: bool = False, shade: bool = False) -> str:

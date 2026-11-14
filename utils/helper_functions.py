@@ -1,4 +1,5 @@
 import logging
+from datetime import date, datetime
 from typing import List
 
 import pandas as pd
@@ -11,11 +12,28 @@ from langchain_core.messages import (
 )
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from IPython.display import HTML, display
-from utils.booking_system_db import CLOSING_TIME, OPENING_TIME, booking_connection
+from utils.booking_system_db import CLOSING_TIME, OPENING_TIME, TODAY, booking_connection
 from utils.visualize_restaurant import restaurant_html
 
-logging.getLogger('httpx').setLevel(logging.WARNING)
-logging.getLogger('httpcore').setLevel(logging.WARNING)
+LOG_LEVEL_NAME = "WARNING"
+
+for logger_name in ("httpx", "httpcore", "openai", "azure"):
+    logging.getLogger(logger_name).setLevel(LOG_LEVEL_NAME)
+
+
+def weekday(date: str) -> str:
+    return datetime.strptime(date, "%Y-%m-%d").strftime("%A")
+
+
+def month(date: str) -> int:
+    return datetime.strptime(date, "%Y-%m-%d").month
+
+
+def month_to_season(month: int) -> str:
+    seasons = ("winter", "winter", "spring", "spring", "spring", "summer",
+               "summer", "summer", "autumn", "autumn", "autumn", "winter")
+    return seasons[(int(month) - 1) % 12]
+
 
 # days of weather returned, starting at start_date
 FORECASTED_DAYS = 3
@@ -61,15 +79,22 @@ HUMAN_IN_THE_LOOP_MIDDLEWARE = HumanInTheLoopMiddleware(
     }
 )
 
-_previous_ids = None  # The first listing establishes the baseline for later comparisons.
+_previous_ids = None
 
-def list_reservations_df():
+
+def list_reservations_df(reservation_date: date | str | None = TODAY):
     global _previous_ids
+    query = (
+        "SELECT reservation_id, name, reservation_time, party_size, outside, waterfront, shade, table_id "
+        "FROM reservations"
+    )
+    params = ()
+    if reservation_date is not None:
+        query += " WHERE date(reservation_time) = ?"
+        params = (str(reservation_date),)
+
     with booking_connection() as conn:
-        df = pd.read_sql_query(
-            "SELECT reservation_id, name, reservation_time, party_size, outside, waterfront, shade, table_id FROM reservations",
-            conn,
-        )
+        df = pd.read_sql_query(query, conn, params=params)
 
     df["reservation_time"] = df["reservation_time"].astype(str)
     for column in ("outside", "waterfront", "shade"):

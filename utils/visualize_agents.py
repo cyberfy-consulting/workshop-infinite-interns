@@ -980,7 +980,7 @@ def _network_layout(swarm):
 # Public runners
 # ======================================================================
 def _request(date, wish):
-    from utils.restaurant_tools import request
+    from utils.restaurant_brigade_tools import request
     return request(date, wish)
 
 

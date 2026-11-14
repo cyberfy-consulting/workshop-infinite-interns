@@ -20,6 +20,21 @@ from datetime import datetime
 
 STORE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "restaurant_store.json")
 
+# Reference data used by the restaurant tools.
+_DEFAULT_SEASONAL_INGREDIENTS = {
+    "spring": "asparagus, peas, spring onions, ricotta",
+    "summer": "tomatoes, zucchini, basil, eggplant, peppers",
+    "autumn": "porcini, pumpkin, radicchio, chestnuts",
+    "winter": "cavolo nero, leeks, potatoes, gorgonzola",
+}
+_DEFAULT_WINE_LIST = {
+    "Chianti Classico": "red, medium body – tomato-based pizzas, salami",
+    "Barbera d'Asti": "red, fresh acidity – mushrooms, ham, cheese-heavy pizzas",
+    "Vermentino": "white, crisp – vegetables, seafood, light soups",
+    "Lambrusco": "sparkling red – spicy salami, Diavola",
+    "Prosecco": "sparkling white – aperitivo, light white pizzas",
+}
+
 # --- Seed data used when the store does not exist yet ---
 _DEFAULT_MENU = {
     # name: {share (sums to 1.0), recipe in kg per pizza}
@@ -62,6 +77,8 @@ def _default_store():
         "pantry": deepcopy(_DEFAULT_PANTRY),
         "daily_plan": {},
         "staff": deepcopy(_DEFAULT_STAFF),
+        "seasonal_ingredients": deepcopy(_DEFAULT_SEASONAL_INGREDIENTS),
+        "wine_list": deepcopy(_DEFAULT_WINE_LIST),
     }
 
 
@@ -96,6 +113,11 @@ def initialize_restaurant(reset: bool = False):
     return STORE_PATH
 
 
+def setup():
+    """Reset the restaurant store to its seed data."""
+    initialize_restaurant(reset=True)
+
+
 # ----------------------------------------------------------------------
 # Read helpers
 # ----------------------------------------------------------------------
@@ -108,6 +130,16 @@ def get_menu():
 def get_soup_base():
     """Return the fixed soup base: {name, recipe (kg/portion), special_per_portion}."""
     return _load()["soup_base"]
+
+
+def get_seasonal_ingredients():
+    """Return seasonal ingredients by season."""
+    return _load()["seasonal_ingredients"]
+
+
+def get_wine_list():
+    """Return wines and their suggested pairings."""
+    return _load()["wine_list"]
 
 
 def get_pantry():

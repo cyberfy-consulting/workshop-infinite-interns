@@ -7,6 +7,7 @@ from datetime import date
 DB_PATH = os.path.join(os.path.dirname(__file__), "booking_system.db")
 
 TODAY = date(2026, 5, 29)   # the fixed "today" of the demo. Summer day to test differen scenarios
+DEMO_DAY = date(2026, 11, 19)
 OPENING_TIME = "18:00"
 CLOSING_TIME = "22:00"
 
@@ -29,6 +30,11 @@ SEED_RESERVATIONS = [
         ("Bob",   f"{TODAY} 18:00", 4, True, True, True, "TO6"),
         ("Carol", f"{TODAY} 19:30", 3, False, False, False, "TI10"),
         ("Dave",  f"{TODAY} 21:00", 4, True, True, False, "TO5"),
+        ("Alice", f"{DEMO_DAY} 19:00", 2, False, False, False, "TI1"),
+        ("Bob",   f"{DEMO_DAY} 19:00", 4, False, False, False, "TI10"),
+        ("Carol", f"{DEMO_DAY} 20:00", 4, False, False, False, "TI11"),
+        ("Dave",  f"{DEMO_DAY} 20:00", 4, False, False, False, "TI12"),
+        ("Frank", f"{DEMO_DAY} 21:00", 2, False, False, False, "TI2"),
 ]
 
 
