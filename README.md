@@ -1,4 +1,4 @@
-# Infinite Interns SDS 2025 - Get AI Agents to Do Your Busy Work
+# Infinite Interns - Get AI Agents to Do Your Busy Work
 
 This is the repository for the Infinite Interns workshop, held by Cyberfy Consulting. 
 

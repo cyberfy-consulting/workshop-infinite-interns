@@ -1,8 +1,11 @@
 import logging
-from datetime import date, datetime
-from typing import List
+from collections.abc import Mapping
+from datetime import date, datetime, timedelta
+from typing import Any, List
 
 import pandas as pd
+import requests
+from requests.adapters import HTTPAdapter, Retry
 from langchain_core.messages import (
     BaseMessage,
     SystemMessage,
@@ -69,6 +72,67 @@ WEATHER_FROM_CODE = {
     96: "Thunderstorm with slight hail", 
     99: "Thunderstorm with heavy hail",
 }
+
+def _http_get_weather_data(
+    start_date: date,
+    latitude: float,
+    longitude: float,
+    days: int = FORECASTED_DAYS,
+) -> Mapping[str, Any]:
+    end_date = start_date + timedelta(days=days - 1)
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "hourly": "weather_code,temperature_2m",
+        "timezone": "auto",
+    }
+
+    session = requests.Session()
+    session.mount("https://", HTTPAdapter(max_retries=Retry(total=3, backoff_factor=1)))
+    try:
+        response = session.get(
+            "https://archive-api.open-meteo.com/v1/archive",
+            params=params,
+            timeout=10,
+        )
+    except requests.exceptions.RequestException as exc:
+        raise ConnectionAbortedError(
+            "Weather lookup failed: the weather service did not respond. Please try again."
+        ) from exc
+    if not response.ok:
+        raise ConnectionAbortedError(
+            f"Weather lookup failed ({response.status_code}): only past dates are available."
+        )
+
+    return response.json()
+
+
+def pretty_weather_response(data: Mapping[str, Any]) -> str:
+    hourly = data["hourly"]
+    lines = []
+    current_day: date | None = None
+
+    for time_str, code, temp in zip(
+        hourly["time"], hourly["weather_code"], hourly["temperature_2m"]
+    ):
+        stamp = datetime.fromisoformat(time_str)
+        if not (OPENING_TIME <= f"{stamp:%H:%M}" <= CLOSING_TIME):
+            continue
+        if stamp.date() != current_day:
+            current_day = stamp.date()
+            lines.extend(
+                [
+                    f"Weather for {stamp:%A, %Y-%m-%d}:",
+                    "\tHourly forecasts:",
+                ]
+            )
+        description = WEATHER_FROM_CODE.get(code, f"code{code}")
+        lines.append(f"\t\t{stamp:%H:%M}: {temp}°C, {description}")
+
+    return "\n".join(lines)
+
 
 HUMAN_IN_THE_LOOP_MIDDLEWARE = HumanInTheLoopMiddleware(
     interrupt_on={
