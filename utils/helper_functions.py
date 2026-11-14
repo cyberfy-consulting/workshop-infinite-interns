@@ -55,6 +55,15 @@ WEATHER_FROM_CODE = {
     99: "Thunderstorm with heavy hail",
 }
 
+HUMAN_IN_THE_LOOP_MIDDLEWARE = HumanInTheLoopMiddleware(
+    interrupt_on={
+        "get_weather": {
+            "allowed_decisions": ["approve", "edit", "respond"],
+            "description": "Please review the tool call",
+        }
+    }
+)
+
 _previous_ids = None  # The first listing establishes the baseline for later comparisons.
 
 def list_reservations_df():
@@ -95,35 +104,6 @@ def list_reservations_df():
 
 
 
-def pretty_print_chunk(log: dict):
-    if "__interrupt__" in log:
-        print("🔔 Interrupt received:")
-        interrupts = log["__interrupt__"]
-        if not isinstance(interrupts, (tuple, list)):
-            interrupts = (interrupts,)
-        for intr in interrupts:
-            value = intr.value
-            for idx, (action, config) in enumerate(
-                zip(value["action_requests"], value["review_configs"], strict=True),
-                start=1,
-            ):
-                print(f" {idx}. Action: {action.get('name')}  args={action.get('args')}")
-                print(f"    Description: {action.get('description', '')}")
-                print(f"    Decisions:   {config.get('allowed_decisions', [])}")
-        print()
-        return
-
-    for agent_name, agent_data in log.items():
-        print(f"Agent: {agent_name}")
-        messages = (agent_data or {}).get("messages", [])
-        if not messages:
-            print("  (no messages)\n")
-            continue
-
-        pretty_print(messages)  # blank line between agents
-
-
-
 def pretty_print(messages: List[BaseMessage]) -> None:
     """
     Print a sequence of LangChain messages in a concise, human-readable form,
@@ -153,11 +133,29 @@ def pretty_print(messages: List[BaseMessage]) -> None:
         print(f"{label} {msg.content}\n")
 
 
-HUMAN_IN_THE_LOOP_MIDDLEWARE = HumanInTheLoopMiddleware(
-    interrupt_on={
-        "get_weather": {
-            "allowed_decisions": ["approve", "edit", "respond"],
-            "description": "Please review the tool call",
-        }
-    }
-)
+def pretty_print_chunk(log: dict):
+    if "__interrupt__" in log:
+        print("🔔 Interrupt received:")
+        interrupts = log["__interrupt__"]
+        if not isinstance(interrupts, (tuple, list)):
+            interrupts = (interrupts,)
+        for intr in interrupts:
+            value = intr.value
+            for idx, (action, config) in enumerate(
+                zip(value["action_requests"], value["review_configs"], strict=True),
+                start=1,
+            ):
+                print(f" {idx}. Action: {action.get('name')}  args={action.get('args')}")
+                print(f"    Description: {action.get('description', '')}")
+                print(f"    Decisions:   {config.get('allowed_decisions', [])}")
+        print()
+        return
+
+    for agent_name, agent_data in log.items():
+        print(f"Agent: {agent_name}")
+        messages = (agent_data or {}).get("messages", [])
+        if not messages:
+            print("  (no messages)\n")
+            continue
+
+        pretty_print(messages)  # blank line between agents

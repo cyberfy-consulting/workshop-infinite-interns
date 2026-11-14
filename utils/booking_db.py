@@ -8,16 +8,6 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "booking.db")
 
 TODAY = date(2026, 5, 29)   # the fixed "today" of the demo. Summer day to test differen scenarios
 
-
-@contextmanager
-def booking_connection(db_path: str = DB_PATH) -> Generator[sqlite3.Connection, None, None]:
-    """Open a short-lived connection to the booking database and always close it."""
-    conn = sqlite3.connect(db_path)
-    try:
-        yield conn
-    finally:
-        conn.close()
-
 # (outside, waterfront, shade, seats, count)
 # waterfront/shade only apply to outside tables, so they stay None for inside tables.
 TABLE_TYPES = [
@@ -30,6 +20,24 @@ TABLE_TYPES = [
     (True,  True,  True,  4, 1),   # outside, waterfront, shaded
     (True,  True,  True,  2, 4),   # outside, waterfront, shaded
 ]
+
+
+SEED_RESERVATIONS = [
+        ("Alice", f"{TODAY} 20:30", 2, False, False, False, "TI1"),
+        ("Bob",   f"{TODAY} 18:00", 4, True, True, True, "TO6"),
+        ("Carol", f"{TODAY} 19:30", 3, False, False, False, "TI10"),
+        ("Dave",  f"{TODAY} 21:00", 4, True, True, False, "TO5"),
+]
+
+
+@contextmanager
+def booking_connection(db_path: str = DB_PATH) -> Generator[sqlite3.Connection, None, None]:
+    """Open a short-lived connection to the booking database and always close it."""
+    conn = sqlite3.connect(db_path)
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def _expand_table_types():
@@ -73,14 +81,6 @@ def initialize_tables(db_path: str = DB_PATH):
             )
 
         conn.commit()
-
-
-SEED_RESERVATIONS = [
-        ("Alice", f"{TODAY} 20:30", 2, False, False, False, "TI1"),
-        ("Bob",   f"{TODAY} 18:00", 4, True, True, True, "TO6"),
-        ("Carol", f"{TODAY} 19:30", 3, False, False, False, "TI10"),
-        ("Dave",  f"{TODAY} 21:00", 4, True, True, False, "TO5"),
-]
 
 
 def initialize_reservations(db_path: str = DB_PATH):
