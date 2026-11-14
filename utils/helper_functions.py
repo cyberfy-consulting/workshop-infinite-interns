@@ -11,15 +11,12 @@ from langchain_core.messages import (
 )
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from IPython.display import HTML, display
-from utils.booking_db import booking_connection
+from utils.booking_db import CLOSING_TIME, OPENING_TIME, booking_connection
 from utils.restaurant_layout import restaurant_html
 
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)
 
-#restaurant reservation hours
-OPENING_TIME = "18:00"
-CLOSING_TIME = "22:00"   
 # days of weather returned, starting at start_date
 FORECASTED_DAYS = 3
 

@@ -7,6 +7,8 @@ from datetime import date
 DB_PATH = os.path.join(os.path.dirname(__file__), "booking.db")
 
 TODAY = date(2026, 5, 29)   # the fixed "today" of the demo. Summer day to test differen scenarios
+OPENING_TIME = "18:00"
+CLOSING_TIME = "22:00"
 
 # (outside, waterfront, shade, seats, count)
 # waterfront/shade only apply to outside tables, so they stay None for inside tables.
