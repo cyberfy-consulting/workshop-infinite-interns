@@ -4,38 +4,18 @@ restaurant_brigade.py
 Helpers for Step 5 (multi-agent patterns) that keep the notebook short and easy to read.
 Nothing in here is needed to *understand* the three patterns – it is the plumbing around them.
 
-    Sequential:  DayPlan, ask, stock_check, after_stock_check, save_plan
+    Sequential:  DayPlan, ask, check_stock, save_plan
     Supervisor:  as_tool
     Network:     network_agent
 """
 
-from typing import Literal, TypedDict
+from typing import TypedDict
 
 from langchain.agents import create_agent
 from langchain.tools import tool
 
 from utils import restaurant_brigade_tools, restaurant_demo as demo
 from utils.restaurant_db import save_daily_plan
-
-# ======================================================================
-# Toolboxes per specialist (least privilege)
-# ======================================================================
-FORECAST_TOOLS = [
-    restaurant_brigade_tools.get_reservations,
-    restaurant_brigade_tools.get_walkin_baseline,
-]
-SOUP_TOOLS = [
-    restaurant_brigade_tools.get_seasonal_ingredients,
-    restaurant_brigade_tools.get_soup_base_tool,
-]
-PURCHASING_TOOLS = [
-    restaurant_brigade_tools.check_soup_ingredient,
-    restaurant_brigade_tools.check_pantry,
-    restaurant_brigade_tools.calculate_order,
-]
-STAFFING_TOOLS = [restaurant_brigade_tools.get_required_staff, restaurant_brigade_tools.get_staff_status]
-SOMMELIER_TOOLS = [restaurant_brigade_tools.get_wine_list]
-
 
 # ======================================================================
 # Pattern 1: Sequential
@@ -65,7 +45,7 @@ def ask(agent, task, plan=None):
     return agent.invoke({"messages": [{"role": "user", "content": task}]})["messages"][-1].content
 
 
-def stock_check(plan):
+def check_stock(plan):
     """Guardrail in plain Python (no LLM): is the soup's special ingredient out of stock?
 
     Out of stock -> send the cook back (at most MAX_STOCK_REJECTIONS times), then fall back to the plain soup."""
@@ -76,12 +56,6 @@ def stock_check(plan):
         return {"retry": True, "tries": plan.get("tries", 0) + 1, "avoid": plan.get("avoid", []) + blocked}
     return {"retry": False, "fallback": True,
             "soup": f"{restaurant_brigade_tools.fallback_soup()} – {', '.join(blocked)} out of stock"}
-
-
-def after_stock_check(plan) -> Literal["soup_agent", "purchasing_agent"]:
-    """Where to go after the stock check: back to the cook, or on to purchasing.
-    (The return type tells LangGraph – and the diagram – the two possible next steps.)"""
-    return "soup_agent" if plan.get("retry") else "purchasing_agent"
 
 
 def save_plan(plan):
@@ -125,12 +99,15 @@ MUST_HAND_OFF = (
 )
 
 
-def network_agent(model, name, tools, prompt, can_hand_off_to=None):
-    """An agent for the network: its own tools plus a handoff tool to colleagues.
+def network_agent(model, definition, can_hand_off_to=None):
+    """An agent for the network, built from the same definition as the specialist (a dict with
+    `name`, `system_prompt` and `tools`): its own tools plus a handoff tool to colleagues, and
+    the team list plus the handoff rule added to its prompt.
 
     can_hand_off_to: who it may hand the work to – by default EVERY other member of the brigade,
     so the order is not fixed anywhere. Robo-Giovanni is the only one allowed to finish."""
+    name = definition["name"]
     targets = can_hand_off_to if can_hand_off_to is not None else [n for n in BRIGADE if n != name]
     rules = "" if name == "robo_giovanni" else " " + MUST_HAND_OFF
-    return create_agent(model, name=name, tools=[*tools, *restaurant_brigade_tools.handoffs(*targets)],
-                        system_prompt=prompt + TEAM + rules)
+    return create_agent(model, name=name, tools=[*definition["tools"], *restaurant_brigade_tools.handoffs(*targets)],
+                        system_prompt=definition["system_prompt"] + TEAM + rules)

@@ -17,7 +17,7 @@ from utils.restaurant_db import (
     get_menu,
     get_pantry,
     get_seasonal_ingredients as get_seasonal_ingredient_data,
-    get_soup_base,
+    get_soup_base as get_soup_base_data,
     get_staff,
     get_wine_list as get_wine_data,
 )
@@ -130,7 +130,7 @@ _REJECTIONS = {}   # thread_id -> how often an ingredient was rejected in that r
 
 def fallback_soup() -> str:
     """The safe choice when no special ingredient works: the plain soup base."""
-    return f"{get_soup_base()['name']} (plain, without a special ingredient)"
+    return f"{get_soup_base_data()['name']} (plain, without a special ingredient)"
 
 
 @tool("check_soup_ingredient")
@@ -158,7 +158,7 @@ def calculate_order(guests: int, special_ingredient: str = "") -> str:
     """Shopping list for the whole day: the classic pizzas AND the soup of the day (fixed base + the
     special ingredient). Estimates pizzas and soups per guest, sums recipe demand, compares it to the
     stock and returns what has to be ordered. Leave special_ingredient empty for the plain soup."""
-    menu, pantry, base = get_menu(), get_pantry(), get_soup_base()
+    menu, pantry, base = get_menu(), get_pantry(), get_soup_base_data()
     total = round(int(guests) * demo.PIZZAS_PER_GUEST)
     soups = round(int(guests) * demo.SOUPS_PER_GUEST)
     pizza_demand, breakdown = {}, [f"Expected classic pizzas: ~{total}"]
@@ -203,10 +203,10 @@ def get_seasonal_ingredients(month: int) -> str:
     return f"In season ({season}): {ingredients}."
 
 
-@tool("get_soup_base")
-def get_soup_base_tool() -> str:
-    """The fixed base of the soup of the day. The cook adds exactly ONE special ingredient to it."""
-    base = get_soup_base()
+@tool("get_soup_base_ingredients")
+def get_soup_base_ingredients() -> str:
+    """The ingredients of the fixed base of the soup of the day. The cook adds exactly ONE special ingredient to it."""
+    base = get_soup_base_data()
     return (f"Soup base '{base['name']}': " + ", ".join(ingredient.replace("_", " ") for ingredient in base["recipe"])
             + ". Add exactly ONE seasonal special ingredient that is not already in the base.")
 
@@ -223,11 +223,11 @@ def get_reservations(date: str) -> str:
     return f"{booked} guests booked across {len(rows)} reservations on {date}."
 
 
-@tool("get_walkin_baseline")
-def get_walkin_baseline(weekday: str) -> str:
-    """Typical number of walk-in guests (no reservation) for a weekday, e.g. 'Saturday'."""
-    base = demo.WALKINS.get(weekday.strip().capitalize(), demo.DEFAULT_WALKINS)
-    return f"Typical walk-ins on {weekday}: ~{base} guests."
+@tool("get_expected_walkins")
+def get_expected_walkins(weekday: str) -> str:
+    """Expected number of walk-in guests (no reservation) for a weekday, e.g. 'Saturday'."""
+    expected = demo.WALKINS.get(weekday.strip().capitalize(), demo.DEFAULT_WALKINS)
+    return f"Expected walk-ins on {weekday}: ~{expected} guests."
 
 
 @tool("get_wine_list")
