@@ -1,4 +1,4 @@
-from utils.booking_system_db import TODAY, booking_connection
+from utils.booking_system_db import TODAY, fetch_tables
 
 # Table positions as (column, row) on a grid, following the arrangement of the sketch.
 POSITIONS = {
@@ -61,11 +61,9 @@ def restaurant_html(booked=None, new=()):
     new: table labels of reservations added since the last call, shown in blue.
     """
     booked = booked or {}
-    with booking_connection() as conn:
-        rows = conn.execute("SELECT label, outside, waterfront, shade, seats FROM tables").fetchall()
 
     parts = [BACKGROUND]
-    for label, outside, waterfront, shade, seats in rows:
+    for label, outside, waterfront, shade, seats in fetch_tables():
         if label not in POSITIONS:
             continue
         status = "new" if label in new else "booked" if label in booked else "free"

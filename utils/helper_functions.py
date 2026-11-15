@@ -15,7 +15,7 @@ from langchain_core.messages import (
 )
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from IPython.display import HTML, display
-from utils.booking_system_db import CLOSING_TIME, OPENING_TIME, TODAY, booking_connection
+from utils.booking_system_db import CLOSING_TIME, OPENING_TIME, RESERVATION_COLUMNS, TODAY, fetch_reservations
 from utils.visualize_restaurant import restaurant_html
 
 LOG_LEVEL_NAME = "WARNING"
@@ -143,23 +143,21 @@ HUMAN_IN_THE_LOOP_MIDDLEWARE = HumanInTheLoopMiddleware(
 _previous_ids = None
 
 
-def show_reservations_from_system(reservation_date: date | str | None = TODAY):
-    global _previous_ids
-    query = (
-        "SELECT reservation_id, name, reservation_time, party_size, outside, waterfront, shade, table_id "
-        "FROM reservations"
-    )
-    params = ()
-    if reservation_date is not None:
-        query += " WHERE date(reservation_time) = ?"
-        params = (str(reservation_date),)
+def _as_flag(value):
+    """0/1/NULL from the database become booleans; anything else (e.g. hex-encoded after Eve) is shown as is."""
+    if value is None:
+        return False
+    return {0: False, 1: True}.get(value, value)
 
-    with booking_connection() as conn:
-        df = pd.read_sql_query(query, conn, params=params)
+
+def show_reservations_from_system(reservation_date: date | str | None = TODAY):
+    """Table and seating plan of the reservations for one date (all dates for None), for the human eye."""
+    global _previous_ids
+    df = pd.DataFrame(fetch_reservations(reservation_date), columns=RESERVATION_COLUMNS)
 
     df["reservation_time"] = df["reservation_time"].astype(str)
     for column in ("outside", "waterfront", "shade"):
-        df[column] = df[column].fillna(0).astype(bool)
+        df[column] = df[column].map(_as_flag)
     
     ids = set(df["reservation_id"])
     if _previous_ids is None:
@@ -169,7 +167,7 @@ def show_reservations_from_system(reservation_date: date | str | None = TODAY):
     new_ids = ids - _previous_ids
     _previous_ids = ids
     
-    # yellow background for every new reservation
+    # highlight every reservation added since the previous listing
     styled = df.style.apply(
         lambda row: ["background-color: #98c3f7" if row["reservation_id"] in new_ids else ""] * len(row),
         axis=1,

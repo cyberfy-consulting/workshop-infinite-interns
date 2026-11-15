@@ -10,7 +10,7 @@ from langgraph.types import Command
 from langgraph_swarm.handoff import METADATA_KEY_HANDOFF_DESTINATION
 
 from utils import restaurant_demo as demo
-from utils.booking_system_db import get_reservation_summary
+from utils.booking_system_db import RESERVATION_COLUMNS, fetch_reservations
 from utils.helper_functions import month_to_season, weekday
 from utils.restaurant_db import (
     _on_vacation,
@@ -217,8 +217,10 @@ def get_soup_base_tool() -> str:
 @tool("get_reservations")
 def get_reservations(date: str) -> str:
     """Number of already-booked guests for a date (YYYY-MM-DD), summing party sizes."""
-    booked, count = get_reservation_summary(date)
-    return f"{booked} guests booked across {count} reservations on {date}."
+    rows = fetch_reservations(date)
+    party_size = RESERVATION_COLUMNS.index("party_size")
+    booked = sum(row[party_size] for row in rows)
+    return f"{booked} guests booked across {len(rows)} reservations on {date}."
 
 
 @tool("get_walkin_baseline")
