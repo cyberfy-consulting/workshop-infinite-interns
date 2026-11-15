@@ -3,7 +3,6 @@ langchain==1.4.10
 langchain-core==1.7.7
 langchain-mcp-adapters==0.3.2
 langchain-azure-ai==1.2.9
-langgraph-supervisor==0.0.31
 langgraph-swarm==0.1.0
 mcp==1.30.0
 openai==3.51.0

@@ -5,14 +5,13 @@ Helpers for Step 5 (multi-agent patterns) that keep the notebook short and easy 
 Nothing in here is needed to *understand* the three patterns – it is the plumbing around them.
 
     Sequential:  DayPlan, giovannis_request, process_request, check_inventory, save_day_plan
-    Supervisor:  as_tool
+    Supervisor:  nothing here, the notebook turns the specialists into tools itself
     Network:     network_agent
 """
 
 from typing import TypedDict
 
 from langchain.agents import create_agent
-from langchain.tools import tool
 
 from utils import brigade_tools, restaurant_param
 from utils.helper_functions import weekday
@@ -67,22 +66,9 @@ def check_inventory(day_plan):
 
 
 def save_day_plan(day_plan):
-    """Save the finished day day_plan to utils/restaurant_store.json (recall it with get_daily_plan)."""
+    """Save the finished day plan to utils/restaurant_store.json (recall it with get_daily_plan)."""
     save_daily_plan(day_plan["date"], day_plan.get("expected_guests"), day_plan.get("soup"), day_plan.get("shopping_list"), day_plan.get("shift_plan"))
     return {}
-
-
-# ======================================================================
-# Pattern 2: Supervisor
-# ======================================================================
-def as_tool(agent):
-    """Wrap a specialist as a tool `ask_<name>(task)`: Robo-Giovanni sends a task, the specialist
-    works on it and its final answer comes back as the tool result."""
-    @tool(f"ask_{agent.name}", description=f"Give {agent.name} a task. It only sees this task text, "
-                                            "so include everything it needs (date, guests, soup, wish …).")
-    def ask_specialist(task: str) -> str:
-        return process_request(agent, task)
-    return ask_specialist
 
 
 # ======================================================================
