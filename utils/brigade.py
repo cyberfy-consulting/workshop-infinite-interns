@@ -1,10 +1,10 @@
 """
-restaurant_brigade.py
+brigade.py
 ----------
 Helpers for Step 5 (multi-agent patterns) that keep the notebook short and easy to read.
 Nothing in here is needed to *understand* the three patterns – it is the plumbing around them.
 
-    Sequential:  DayPlan, ask, check_stock, save_plan
+    Sequential:  DayPlan, giovannis_request, process_request, check_inventory, save_day_plan
     Supervisor:  as_tool
     Network:     network_agent
 """
@@ -14,7 +14,8 @@ from typing import TypedDict
 from langchain.agents import create_agent
 from langchain.tools import tool
 
-from utils import restaurant_brigade_tools, restaurant_demo as demo
+from utils import brigade_tools, restaurant_param
+from utils.helper_functions import weekday
 from utils.restaurant_db import save_daily_plan
 
 # ======================================================================
@@ -25,42 +26,49 @@ class DayPlan(TypedDict, total=False):
     date: str
     wish: str
     brief: str        # Robo-Giovanni
-    guests: str       # forecast
+    expected_guests: str   # forecast
     soup: str         # soup
-    order: str        # purchasing
-    staffing: str     # staffing
+    shopping_list: str     # purchasing
+    shift_plan: str        # staffing
     avoid: list       # stock check: ingredients the cook must not use
-    tries: int        # stock check: how often the cook was sent back
-    retry: bool       # stock check: send the cook back?
-    fallback: bool    # stock check: gave up, plain soup
+    times_sent_back: int   # stock check: how often the cook was sent back
+    send_cook_back: bool   # stock check: send the cook back?
+    plain_soup: bool       # stock check: gave up, plain soup
 
 
-def ask(agent, task, plan=None):
-    """Give one agent a task and return its final answer.
+def giovannis_request(date: str, wish: str = "") -> str:
+    """Giovanni's request for one day: his four morning questions, plus his wish if he has one.
+    The same text starts the planning in all three patterns."""
+    return (f"Plan {date} (a {weekday(date)}): how busy will it be, what is the soup of the day, what do we "
+            f"need to buy and who has to work? {wish or ''}".strip())
 
-    If the plan already has Robo-Giovanni's brief, it is put in front of the task – so every
+
+def process_request(agent, request, day_plan=None):
+    """Let one agent process a request and return its final answer as text.
+
+    If the day_plan already has Robo-Giovanni's brief, it is put in front of the request, so every
     specialist knows the big picture, not just its own little job."""
-    if plan and plan.get("brief"):
-        task = f"Brief from Robo-Giovanni:\n{plan['brief']}\n\nYour task: {task}"
-    return agent.invoke({"messages": [{"role": "user", "content": task}]})["messages"][-1].content
+    if day_plan and day_plan.get("brief"):
+        request = f"Brief from Robo-Giovanni:\n{day_plan['brief']}\n\nYour task: {request}"
+    return agent.invoke({"messages": [{"role": "user", "content": request}]})["messages"][-1].content
 
 
-def check_stock(plan):
+def check_inventory(day_plan):
     """Guardrail in plain Python (no LLM): is the soup's special ingredient out of stock?
 
     Out of stock -> send the cook back (at most MAX_STOCK_REJECTIONS times), then fall back to the plain soup."""
-    blocked = restaurant_brigade_tools.blocked_ingredients(plan["soup"])
+    blocked = brigade_tools.blocked_ingredients(day_plan["soup"])
     if not blocked:
-        return {"retry": False}
-    if plan.get("tries", 0) < demo.MAX_STOCK_REJECTIONS:
-        return {"retry": True, "tries": plan.get("tries", 0) + 1, "avoid": plan.get("avoid", []) + blocked}
-    return {"retry": False, "fallback": True,
-            "soup": f"{restaurant_brigade_tools.fallback_soup()} – {', '.join(blocked)} out of stock"}
+        return {"send_cook_back": False}
+    if day_plan.get("times_sent_back", 0) < restaurant_param.max_stock_rejections:
+        return {"send_cook_back": True, "times_sent_back": day_plan.get("times_sent_back", 0) + 1, "avoid": day_plan.get("avoid", []) + blocked}
+    return {"send_cook_back": False, "plain_soup": True,
+            "soup": f"{brigade_tools.fallback_soup()} – {', '.join(blocked)} out of stock"}
 
 
-def save_plan(plan):
-    """Save the finished day plan to utils/restaurant_store.json (recall it with get_daily_plan)."""
-    save_daily_plan(plan["date"], plan.get("guests"), plan.get("soup"), plan.get("order"), plan.get("staffing"))
+def save_day_plan(day_plan):
+    """Save the finished day day_plan to utils/restaurant_store.json (recall it with get_daily_plan)."""
+    save_daily_plan(day_plan["date"], day_plan.get("expected_guests"), day_plan.get("soup"), day_plan.get("shopping_list"), day_plan.get("shift_plan"))
     return {}
 
 
@@ -73,7 +81,7 @@ def as_tool(agent):
     @tool(f"ask_{agent.name}", description=f"Give {agent.name} a task. It only sees this task text, "
                                             "so include everything it needs (date, guests, soup, wish …).")
     def ask_specialist(task: str) -> str:
-        return ask(agent, task)
+        return process_request(agent, task)
     return ask_specialist
 
 
@@ -88,13 +96,13 @@ TEAM = (
     "- forecast_agent: guest numbers. Needs only the date.\n"
     "- soup_agent: special ingredient of the soup of the day. Needs the month and Giovanni's wish.\n"
     "- purchasing_agent: shopping list for pizzas and soup. Needs the guest number AND the soup.\n"
-    "- staffing_agent: shift plan. Needs the date and the guest number.\n"
+    "- staffing_agent: shift day_plan. Needs the date and the guest number.\n"
 )
 MUST_HAND_OFF = (
     "When your part is done, YOU decide who should continue: look at what is still missing and call the "
     "transfer tool of that colleague – as the ONLY tool call of that step. Put your result into its `note` – "
     "the next agent needs it. "
-    "If everything (guests, soup, shopping list, shift plan) is done, hand back to robo_giovanni. "
+    "If everything (guests, soup, shopping list, shift day_plan) is done, hand back to robo_giovanni. "
     "Never end with a plain answer."
 )
 
@@ -109,5 +117,5 @@ def network_agent(model, definition, can_hand_off_to=None):
     name = definition["name"]
     targets = can_hand_off_to if can_hand_off_to is not None else [n for n in BRIGADE if n != name]
     rules = "" if name == "robo_giovanni" else " " + MUST_HAND_OFF
-    return create_agent(model, name=name, tools=[*definition["tools"], *restaurant_brigade_tools.handoffs(*targets)],
+    return create_agent(model, name=name, tools=[*definition["tools"], *brigade_tools.handoffs(*targets)],
                         system_prompt=definition["system_prompt"] + TEAM + rules)

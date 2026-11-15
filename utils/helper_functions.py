@@ -24,12 +24,14 @@ for logger_name in ("httpx", "httpcore", "openai", "azure"):
     logging.getLogger(logger_name).setLevel(LOG_LEVEL_NAME)
 
 
-def weekday(date: str) -> str:
-    return datetime.strptime(date, "%Y-%m-%d").strftime("%A")
+def weekday(date) -> str:
+    """Weekday name for a date object or an ISO string."""
+    return datetime.strptime(str(date), "%Y-%m-%d").strftime("%A")
 
 
-def month(date: str) -> int:
-    return datetime.strptime(date, "%Y-%m-%d").month
+def month(date) -> int:
+    """Month number for a date object or an ISO string."""
+    return datetime.strptime(str(date), "%Y-%m-%d").month
 
 
 def month_to_season(month: int) -> str:

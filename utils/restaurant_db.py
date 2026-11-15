@@ -148,8 +148,8 @@ def get_pantry():
 
 
 def get_daily_plan(day):
-    """Return the persisted plan dict for a day, or None if not saved yet."""
-    return _load()["daily_plan"].get(day)
+    """Return the persisted plan dict for a day (date or ISO string), or None if not saved yet."""
+    return _load()["daily_plan"].get(str(day))
 
 
 # ----------------------------------------------------------------------
@@ -164,6 +164,7 @@ def set_stock(ingredient, kg):
 
 def save_daily_plan(day, guests, soup, order_list, staffing):
     """Persist the finished plan for a day so it can be recalled later."""
+    day = str(day)
     store = _load()
     store["daily_plan"][day] = {
         "day": day,

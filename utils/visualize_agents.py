@@ -3,10 +3,10 @@ visualize_agents.py
 ------------
 Live visualisations for Step 5 (multi-agent patterns).
 
-    run_sequential(graph, date, wish)   -> animates a LangGraph StateGraph
-    run_supervisor(app, date, wish)     -> animates a supervisor whose specialists are tools (ask_<agent>)
-    run_network(swarm, date, wish)      -> animates a langgraph-swarm app
-    compare_runs()                      -> table comparing all runs so far
+    run_sequential_pattern(graph, date, wish)   -> animates a LangGraph StateGraph
+    run_supervisor_pattern(app, date, wish)     -> animates a supervisor whose specialists are tools (ask_<agent>)
+    run_network_pattern(swarm, date, wish)      -> animates a langgraph-swarm app
+    compare_patterns()                      -> table comparing all runs so far
     show_patterns()                     -> static overview of the three patterns
 
 The animation is driven by LangChain callbacks, so it shows in real time which
@@ -71,9 +71,9 @@ def _who(n):
     icon, name, _ = _agent_style(n)
     return f"<span class='pz-who' data-ag='{n}'>{icon} {_esc(name)}</span>"
 STEP_STYLE = {    # plain-Python nodes in the sequential graph
-    "stock_check": ("🔍", "Stock check"),
+    "check_inventory": ("🔍", "Inventory check"),
     "persist":     ("💾", "Save plan"),
-    "save_plan":   ("💾", "Save plan"),
+    "save_day_plan":   ("💾", "Save plan"),
 }
 PATTERNS = {
     "sequential": ("🏭", "Sequential", "La Mise en Place"),
@@ -626,20 +626,20 @@ class _LiveView:
             prev = self.current
             self.current = node
             self._use_edge(prev or "__start__", node, "flow")
-            if node == "stock_check":
+            if node == "check_inventory":
                 blocked = update.get("avoid") or []
-                if update.get("retry"):
+                if update.get("send_cook_back"):
                     self.status[node] = "bad"
                     self._event("🔍", f"Stock check: <b>{_esc(', '.join(blocked))}</b> is out of stock → back to {_who('soup_agent')}", "warn")
                     self.edge_label[(node, "soup_agent", "flow")] = f"avoid {', '.join(blocked)}"
                     self.current = node
-                elif update.get("fallback"):
+                elif update.get("plain_soup"):
                     self.status[node] = "bad"
                     self._event("🔍", f"Stock check: still not possible → fallback to <b>{_esc(update.get('soup'))}</b>", "warn")
                 else:
                     self.status[node] = "done"
                     self._event("🔍", "Stock check passed: the soup ingredient is available", "hand")
-            elif node in ("persist", "save_plan"):
+            elif node in ("persist", "save_day_plan"):
                 self.status[node] = "done"
                 self._event("💾", "Day plan saved to <code>utils/restaurant_store.json</code>", "hand")
             else:
@@ -980,8 +980,8 @@ def _network_layout(swarm):
 # Public runners
 # ======================================================================
 def _request(date, wish):
-    from utils.restaurant_brigade_tools import request
-    return request(date, wish)
+    from utils.brigade import giovannis_request
+    return giovannis_request(date, wish)
 
 
 def _drive(view, graph, inputs, config):
@@ -1008,8 +1008,9 @@ def _drive(view, graph, inputs, config):
     return view.close(state=state)
 
 
-def run_sequential(graph, date, wish=""):
+def run_sequential_pattern(graph, date, wish=""):
     """Run a sequential StateGraph (input: date + wish) and animate it."""
+    date = str(date)   # a date object or an ISO string, the plan works with the string
     agents = [n for n in graph.nodes if n.endswith("_agent") or n in CHEFS]
     layout, edges, W = _sequential_layout(graph, agents)
     view = _LiveView("sequential", date, layout, edges, width=W)
@@ -1017,11 +1018,12 @@ def run_sequential(graph, date, wish=""):
     return _drive(view, graph, {"date": date, "wish": wish}, {"recursion_limit": 40})
 
 
-def run_supervisor(app, date, wish="", request=None):
+def run_supervisor_pattern(app, date, wish="", request=None):
     """Run a supervisor and animate the chef delegating to the specialists.
 
     `app` is an agent whose tools are the specialists (`ask_<agent>`). A langgraph-supervisor app
     (specialists as graph nodes with transfer_to_ handoffs) still works, too."""
+    date = str(date)   # a date object or an ISO string, the plan works with the string
     asks = [t[len("ask_"):] for t in _agent_tools(app) if t.startswith("ask_")]
     if asks:
         boss = getattr(app, "name", None) or "supervisor"
@@ -1049,8 +1051,9 @@ def _swarm_entry(swarm, layout):
     return next((n for n in layout if n.startswith("forecast")), next(iter(layout)))
 
 
-def run_network(swarm, date, wish="", request=None, recursion_limit=16):
+def run_network_pattern(swarm, date, wish="", request=None, recursion_limit=16):
     """Run a swarm and animate every handoff, including loop-backs."""
+    date = str(date)   # a date object or an ISO string, the plan works with the string
     layout, edges = _network_layout(swarm)
     entry = _swarm_entry(swarm, layout)
     view = _LiveView("network", date, layout, edges, entry=entry)
@@ -1062,7 +1065,7 @@ def run_network(swarm, date, wish="", request=None, recursion_limit=16):
 # ======================================================================
 # Comparison & overview
 # ======================================================================
-def compare_runs(last_per_pattern=True):
+def compare_patterns(last_per_pattern=True):
     """Compare the runs of this session: time, LLM calls, tokens, handoffs."""
     runs = RUNS
     if last_per_pattern:

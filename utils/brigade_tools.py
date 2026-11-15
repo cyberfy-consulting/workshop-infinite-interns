@@ -9,7 +9,7 @@ from langgraph.prebuilt import InjectedState
 from langgraph.types import Command
 from langgraph_swarm.handoff import METADATA_KEY_HANDOFF_DESTINATION
 
-from utils import restaurant_demo as demo
+from utils import restaurant_param
 from utils.booking_system_db import RESERVATION_COLUMNS, fetch_reservations
 from utils.helper_functions import month_to_season, weekday
 from utils.restaurant_db import (
@@ -21,12 +21,6 @@ from utils.restaurant_db import (
     get_staff,
     get_wine_list as get_wine_data,
 )
-
-
-def request(date: str, wish: str = "") -> str:
-    """Build Giovanni's shared planning request for a day."""
-    return (f"Plan {date} (a {weekday(date)}): how busy will it be, what is the soup of the day, what do we "
-            f"need to buy and who has to work? {wish or ''}".strip())
 
 
 def handoffs(*agent_names: str):
@@ -100,7 +94,7 @@ def _norm(ingredient: str) -> str:
 
 
 def _is_out_of_stock(ingredient: str) -> bool:
-    return _norm(ingredient) in {_norm(item) for item in demo.OUT_OF_STOCK}
+    return _norm(ingredient) in {_norm(item) for item in restaurant_param.out_of_stock}
 
 
 def blocked_ingredients(soup: str) -> list:
@@ -113,7 +107,7 @@ def blocked_ingredients(soup: str) -> list:
         if "special ingredient" in line:
             text = line
             break
-    return sorted(item for item in demo.OUT_OF_STOCK if _norm(item).replace("_", " ") in text)
+    return sorted(item for item in restaurant_param.out_of_stock if _norm(item).replace("_", " ") in text)
 
 
 @tool("check_pantry")
@@ -141,10 +135,10 @@ def check_soup_ingredient(ingredient: str, config: RunnableConfig) -> str:
         thread = (config or {}).get("configurable", {}).get("thread_id")
         if thread is not None:
             _REJECTIONS[thread] = _REJECTIONS.get(thread, 0) + 1
-            if _REJECTIONS[thread] > demo.MAX_STOCK_REJECTIONS:
+            if _REJECTIONS[thread] > restaurant_param.max_stock_rejections:
                 return (f"FALLBACK REQUIRED: '{ing}' is still unavailable and the cook was already asked "
                         f"to change it. Do NOT hand off to soup_agent again. Use '{fallback_soup()}' as the soup "
-                        "of the day and continue with the shopping list (calculate_order without a special ingredient).")
+                        "of the day and continue with the shopping list (calculate_shopping_list without a special ingredient).")
         return (f"OUT OF STOCK: '{ing}' is unavailable and cannot be reordered in time. "
                 "The soup of the day MUST get a different special ingredient.")
     stock = get_pantry().get(ing)
@@ -153,14 +147,14 @@ def check_soup_ingredient(ingredient: str, config: RunnableConfig) -> str:
     return f"AVAILABLE: '{ing}' is not in the pantry but can be ordered from the supplier in time."
 
 
-@tool("calculate_order")
-def calculate_order(guests: int, special_ingredient: str = "") -> str:
+@tool("calculate_shopping_list")
+def calculate_shopping_list(guests: int, special_ingredient: str = "") -> str:
     """Shopping list for the whole day: the classic pizzas AND the soup of the day (fixed base + the
     special ingredient). Estimates pizzas and soups per guest, sums recipe demand, compares it to the
     stock and returns what has to be ordered. Leave special_ingredient empty for the plain soup."""
     menu, pantry, base = get_menu(), get_pantry(), get_soup_base_data()
-    total = round(int(guests) * demo.PIZZAS_PER_GUEST)
-    soups = round(int(guests) * demo.SOUPS_PER_GUEST)
+    total = round(int(guests) * restaurant_param.pizzas_per_guest)
+    soups = round(int(guests) * restaurant_param.soups_per_guest)
     pizza_demand, breakdown = {}, [f"Expected classic pizzas: ~{total}"]
     for name, share, recipe in menu:
         qty = round(total * share)
@@ -226,7 +220,7 @@ def get_reservations(date: str) -> str:
 @tool("get_expected_walkins")
 def get_expected_walkins(weekday: str) -> str:
     """Expected number of walk-in guests (no reservation) for a weekday, e.g. 'Saturday'."""
-    expected = demo.WALKINS.get(weekday.strip().capitalize(), demo.DEFAULT_WALKINS)
+    expected = restaurant_param.walkins.get(weekday.strip().capitalize(), restaurant_param.default_walkins)
     return f"Expected walk-ins on {weekday}: ~{expected} guests."
 
 
@@ -244,11 +238,11 @@ def get_wine_list() -> str:
 def get_required_staff(guests: int) -> str:
     """How many cooks and service staff are needed for a number of guests."""
     g = int(guests)
-    cooks = max(1, -(-g // demo.GUESTS_PER_COOK))
-    service = max(1, -(-g // demo.GUESTS_PER_SERVICE))
+    cooks = max(1, -(-g // restaurant_param.guests_per_cook))
+    service = max(1, -(-g // restaurant_param.guests_per_service))
     return (f"Required: {cooks} cook(s), {service} service "
-            f"(rule: 1 cook per {demo.GUESTS_PER_COOK} guests, "
-            f"1 service per {demo.GUESTS_PER_SERVICE} guests).")
+            f"(rule: 1 cook per {restaurant_param.guests_per_cook} guests, "
+            f"1 service per {restaurant_param.guests_per_service} guests).")
 
 
 @tool("get_staff_status")
