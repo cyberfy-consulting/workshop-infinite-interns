@@ -26,15 +26,15 @@ TABLE_TYPES = [
 
 
 SEED_RESERVATIONS = [
-        ("Alice", f"{TODAY} 20:30", 2, False, False, False, "TI1"),
-        ("Bob",   f"{TODAY} 18:00", 4, True, True, True, "TO6"),
-        ("Carol", f"{TODAY} 19:30", 3, False, False, False, "TI10"),
-        ("Dave",  f"{TODAY} 21:00", 4, True, True, False, "TO5"),
-        ("Alice", f"{DEMO_DAY} 19:00", 2, False, False, False, "TI1"),
-        ("Bob",   f"{DEMO_DAY} 19:00", 4, False, False, False, "TI10"),
-        ("Carol", f"{DEMO_DAY} 20:00", 4, False, False, False, "TI11"),
-        ("Dave",  f"{DEMO_DAY} 20:00", 4, False, False, False, "TI12"),
-        ("Frank", f"{DEMO_DAY} 21:00", 2, False, False, False, "TI2"),
+        ("Alice", f"{TODAY} 20:30", 2, False, False, False, "TI-1"),
+        ("Bob",   f"{TODAY} 18:00", 4, True, True, True, "TO-6"),
+        ("Carol", f"{TODAY} 19:30", 3, False, False, False, "TI-10"),
+        ("Dave",  f"{TODAY} 21:00", 4, True, True, False, "TO-5"),
+        ("Alice", f"{DEMO_DAY} 19:00", 2, False, False, False, "TI-1"),
+        ("Bob",   f"{DEMO_DAY} 19:00", 4, False, False, False, "TI-10"),
+        ("Carol", f"{DEMO_DAY} 20:00", 4, False, False, False, "TI-11"),
+        ("Dave",  f"{DEMO_DAY} 20:00", 4, False, False, False, "TI-12"),
+        ("Frank", f"{DEMO_DAY} 21:00", 2, False, False, False, "TI-2"),
 ]
 
 
@@ -68,10 +68,10 @@ def _expand_table_types():
     for outside, waterfront, shade, seats, count in TABLE_TYPES:
         for _ in range(count):
             if outside:
-                label = f"TO{outside_idx}"
+                label = f"TO-{outside_idx}"
                 outside_idx += 1
             else:
-                label = f"TI{inside_idx}"
+                label = f"TI-{inside_idx}"
                 inside_idx += 1
             rows.append((label, outside, waterfront, shade, seats))
     return rows

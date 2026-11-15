@@ -3,17 +3,17 @@ from utils.booking_system_db import TODAY, booking_connection
 # Table positions as (column, row) on a grid, following the arrangement of the sketch.
 POSITIONS = {
     # inside, along the top wall
-    "TI1":  (0, 0), "TI2":  (1, 0), "TI3":  (2, 0), "TI4":  (3, 0),
-    "TI5":  (0, 1), "TI6":  (1, 1), "TI7":  (2, 1), "TI8":  (3, 1),
+    "TI-1":  (0, 0), "TI-2":  (1, 0), "TI-3":  (2, 0), "TI-4":  (3, 0),
+    "TI-5":  (0, 1), "TI-6":  (1, 1), "TI-7":  (2, 1), "TI-8":  (3, 1),
     # inside, along the left wall
-    "TI9":  (0, 2), "TI10": (0, 3), "TI11": (0, 4),
+    "TI-9":  (0, 2), "TI-10": (0, 3), "TI-11": (0, 4),
     # inside, lower room (next to the bar)
-    "TI12": (2, 5), "TI13": (3, 5),
+    "TI-12": (2, 5), "TI-13": (3, 5),
     # outside, next to the building
-    "TO1":  (5, 0), "TO2":  (5, 1), "TO3":  (5, 5), "TO4":  (5, 6),
+    "TO-1":  (5, 0), "TO-2":  (5, 1), "TO-3":  (5, 5), "TO-4":  (5, 6),
     # outside, waterfront
-    "TO5":  (7, 0), "TO6":  (7, 1), "TO7":  (7, 2), "TO8":  (7, 3),
-    "TO9":  (7, 5), "TO10": (7, 6),
+    "TO-5":  (7, 0), "TO-6":  (7, 1), "TO-7":  (7, 2), "TO-8":  (7, 3),
+    "TO-9":  (7, 5), "TO-10": (7, 6),
 }
 
 CELL = 100   # grid spacing in pixels

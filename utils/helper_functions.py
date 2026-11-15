@@ -143,7 +143,7 @@ HUMAN_IN_THE_LOOP_MIDDLEWARE = HumanInTheLoopMiddleware(
 _previous_ids = None
 
 
-def list_reservations_df(reservation_date: date | str | None = TODAY):
+def show_reservations_from_system(reservation_date: date | str | None = TODAY):
     global _previous_ids
     query = (
         "SELECT reservation_id, name, reservation_time, party_size, outside, waterfront, shade, table_id "
@@ -159,7 +159,7 @@ def list_reservations_df(reservation_date: date | str | None = TODAY):
 
     df["reservation_time"] = df["reservation_time"].astype(str)
     for column in ("outside", "waterfront", "shade"):
-        df[column] = df[column].fillna(0).replace({0: False, 1: True})
+        df[column] = df[column].fillna(0).astype(bool)
     
     ids = set(df["reservation_id"])
     if _previous_ids is None:
