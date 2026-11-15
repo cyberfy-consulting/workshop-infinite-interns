@@ -38,9 +38,6 @@ def month_to_season(month: int) -> str:
     return seasons[(int(month) - 1) % 12]
 
 
-# days of weather returned, starting at start_date
-FORECASTED_DAYS = 3
-
 # WMO weather codes used by Open-Meteo
 WEATHER_FROM_CODE = {
     0: "Clear sky", 
@@ -77,7 +74,7 @@ def _http_get_weather_data(
     start_date: date,
     latitude: float,
     longitude: float,
-    days: int = FORECASTED_DAYS,
+    days: int,
 ) -> Mapping[str, Any]:
     end_date = start_date + timedelta(days=days - 1)
     params = {
