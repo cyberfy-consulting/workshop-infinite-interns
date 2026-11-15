@@ -131,7 +131,7 @@ def pretty_weather_response(data: Mapping[str, Any]) -> str:
     return "\n".join(lines)
 
 
-HUMAN_IN_THE_LOOP_MIDDLEWARE = HumanInTheLoopMiddleware(
+HUMAN_IN_THE_LOOP = HumanInTheLoopMiddleware(
     interrupt_on={
         "get_weather": {
             "allowed_decisions": ["approve", "edit", "respond"],
@@ -185,11 +185,19 @@ def show_reservations_from_system(reservation_date: date | str | None = TODAY):
 
 
 
-def pretty_print(messages: List[BaseMessage]) -> None:
+def pretty_print(response: Mapping[str, Any] | List[BaseMessage]) -> None:
     """
-    Print a sequence of LangChain messages in a concise, human-readable form,
-    omitting all IDs, token counts, and other metadata.
+    Print an agent response, or a plain list of LangChain messages, in a concise,
+    human-readable form, omitting all IDs, token counts, and other metadata.
+    Given the response of an agent, it also shows the tool calls the agent has
+    paused on, if a human decision is pending.
     """
+    if isinstance(response, Mapping):
+        messages = response.get("messages", [])
+        interrupts = response.get("__interrupt__")
+    else:
+        messages, interrupts = response, None
+
     for msg in messages:
         role = type(msg).__name__
         # Map class names to simpler labels
@@ -213,23 +221,32 @@ def pretty_print(messages: List[BaseMessage]) -> None:
         # Print the label and the actual content
         print(f"{label} {msg.content}\n")
 
+    if interrupts:
+        _print_interrupts(interrupts)
+
+
+def _print_interrupts(interrupts) -> None:
+    """Print the tool calls an agent has paused on."""
+    if not interrupts:
+        return
+    if not isinstance(interrupts, (tuple, list)):
+        interrupts = (interrupts,)
+    print("🔔 Interrupt received, the agent is waiting for your decision:")
+    for intr in interrupts:
+        value = intr.value
+        for idx, (action, config) in enumerate(
+            zip(value["action_requests"], value["review_configs"], strict=True),
+            start=1,
+        ):
+            print(f" {idx}. Action: {action.get('name')}  args={action.get('args')}")
+            print(f"    Description: {action.get('description', '')}")
+            print(f"    Decisions:   {config.get('allowed_decisions', [])}")
+    print()
+
 
 def pretty_print_chunk(log: dict):
     if "__interrupt__" in log:
-        print("🔔 Interrupt received:")
-        interrupts = log["__interrupt__"]
-        if not isinstance(interrupts, (tuple, list)):
-            interrupts = (interrupts,)
-        for intr in interrupts:
-            value = intr.value
-            for idx, (action, config) in enumerate(
-                zip(value["action_requests"], value["review_configs"], strict=True),
-                start=1,
-            ):
-                print(f" {idx}. Action: {action.get('name')}  args={action.get('args')}")
-                print(f"    Description: {action.get('description', '')}")
-                print(f"    Decisions:   {config.get('allowed_decisions', [])}")
-        print()
+        _print_interrupts(log["__interrupt__"])
         return
 
     for agent_name, agent_data in log.items():
