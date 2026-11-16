@@ -3,9 +3,16 @@
 The tools of the brigade read these values on every call, so they can be changed between runs.
 reset() puts them back to the values below."""
 
-walkins = {"Friday": 60, "Saturday": 80, "Sunday": 50}   # typical walk-in guests per weekday
-default_walkins = 30                                     # walk-ins on any other day
-pizzas_per_guest = 1.2
+walkins = {                                              # typical walk-in guests per weekday
+    "Monday": 30,
+    "Tuesday": 30,
+    "Wednesday": 30,
+    "Thursday": 30,
+    "Friday": 60,
+    "Saturday": 80,
+    "Sunday": 50,
+}
+pizzas_per_guest = 1.2                                   # a bit more than 1 per guest, to have some spare
 soups_per_guest = 0.5
 guests_per_cook = 30
 guests_per_service = 20
@@ -14,7 +21,6 @@ max_stock_rejections = 1                                 # how often the soup in
 
 _DEFAULTS = {
     "walkins": dict(walkins),
-    "default_walkins": default_walkins,
     "pizzas_per_guest": pizzas_per_guest,
     "soups_per_guest": soups_per_guest,
     "guests_per_cook": guests_per_cook,

@@ -4,7 +4,7 @@ brigade.py
 Helpers for Step 5 (multi-agent patterns) that keep the notebook short and easy to read.
 Nothing in here is needed to *understand* the three patterns – it is the plumbing around them.
 
-    Sequential:  DayPlan, giovannis_request, process_request, check_inventory, save_day_plan
+    Sequential:  DayPlan, giovannis_request, process_request, check_inventory
     Supervisor:  nothing here, the notebook turns the specialists into tools itself
     Network:     network_agent
 """
@@ -15,7 +15,6 @@ from langchain.agents import create_agent
 
 from utils import brigade_tools, restaurant_param
 from utils.helper_functions import weekday
-from utils.restaurant_db import save_daily_plan
 
 # ======================================================================
 # Pattern 1: Sequential
@@ -55,7 +54,7 @@ def process_request(agent, request, day_plan=None):
 def check_inventory(day_plan):
     """Guardrail in plain Python (no LLM): is the soup's special ingredient out of stock?
 
-    Out of stock -> send the cook back (at most MAX_STOCK_REJECTIONS times), then fall back to the plain soup."""
+    Out of stock -> send the cook back (at most restaurant_param.max_stock_rejections times), then fall back to the plain soup."""
     blocked = brigade_tools.blocked_ingredients(day_plan["soup"])
     if not blocked:
         return {"send_cook_back": False}
@@ -63,12 +62,6 @@ def check_inventory(day_plan):
         return {"send_cook_back": True, "times_sent_back": day_plan.get("times_sent_back", 0) + 1, "avoid": day_plan.get("avoid", []) + blocked}
     return {"send_cook_back": False, "plain_soup": True,
             "soup": f"{brigade_tools.fallback_soup()} – {', '.join(blocked)} out of stock"}
-
-
-def save_day_plan(day_plan):
-    """Save the finished day plan to utils/restaurant_store.json (recall it with get_daily_plan)."""
-    save_daily_plan(day_plan["date"], day_plan.get("expected_guests"), day_plan.get("soup"), day_plan.get("shopping_list"), day_plan.get("shift_plan"))
-    return {}
 
 
 # ======================================================================

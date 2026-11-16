@@ -19,7 +19,6 @@ from utils.restaurant_db import (
     get_seasonal_ingredients as get_seasonal_ingredient_data,
     get_soup_base as get_soup_base_data,
     get_staff,
-    get_wine_list as get_wine_data,
 )
 
 
@@ -220,16 +219,12 @@ def get_reservations(date: str) -> str:
 @tool("get_expected_walkins")
 def get_expected_walkins(weekday: str) -> str:
     """Expected number of walk-in guests (no reservation) for a weekday, e.g. 'Saturday'."""
-    expected = restaurant_param.walkins.get(weekday.strip().capitalize(), restaurant_param.default_walkins)
+    day = weekday.strip().capitalize()
+    if day not in restaurant_param.walkins:
+        return f"Unknown weekday '{weekday}'. Use one of: {', '.join(restaurant_param.walkins)}."
+    expected = restaurant_param.walkins[day]
     return f"Expected walk-ins on {weekday}: ~{expected} guests."
 
-
-@tool("get_wine_list")
-def get_wine_list() -> str:
-    """Wines Giovanni has in the cellar and what they pair well with."""
-    return "Wine list:\n" + "\n".join(
-        f"  - {wine}: {description}" for wine, description in get_wine_data().items()
-    )
 
 # ======================================================================
 # Generic

@@ -3,13 +3,12 @@ restaurant_db.py
 ------------
 A small JSON-backed store for the restaurant workshop.
 
-The store is shared by the menu, pantry, daily plan, and staffing helpers.
+The store is shared by the menu, pantry and staffing helpers.
 
 Tables (top-level keys in the JSON file):
   - menu        : the classic pizzas (fixed), their sales share and recipe (kg/pizza)
   - soup_base   : the fixed base of the soup of the day and its recipe (kg/portion)
   - pantry      : current stock per ingredient (kg)
-  - daily_plan  : the last persisted plan per day (recallable)
   - staff       : employees, availability, and vacation ranges
 """
 
@@ -27,14 +26,6 @@ _DEFAULT_SEASONAL_INGREDIENTS = {
     "autumn": "porcini, pumpkin, radicchio, chestnuts",
     "winter": "cavolo nero, leeks, potatoes, gorgonzola",
 }
-_DEFAULT_WINE_LIST = {
-    "Chianti Classico": "red, medium body – tomato-based pizzas, salami",
-    "Barbera d'Asti": "red, fresh acidity – mushrooms, ham, cheese-heavy pizzas",
-    "Vermentino": "white, crisp – vegetables, seafood, light soups",
-    "Lambrusco": "sparkling red – spicy salami, Diavola",
-    "Prosecco": "sparkling white – aperitivo, light white pizzas",
-}
-
 # --- Seed data used when the store does not exist yet ---
 _DEFAULT_MENU = {
     # name: {share (sums to 1.0), recipe in kg per pizza}
@@ -75,10 +66,8 @@ def _default_store():
         "menu": deepcopy(_DEFAULT_MENU),
         "soup_base": deepcopy(_DEFAULT_SOUP_BASE),
         "pantry": deepcopy(_DEFAULT_PANTRY),
-        "daily_plan": {},
         "staff": deepcopy(_DEFAULT_STAFF),
         "seasonal_ingredients": deepcopy(_DEFAULT_SEASONAL_INGREDIENTS),
-        "wine_list": deepcopy(_DEFAULT_WINE_LIST),
     }
 
 
@@ -137,19 +126,9 @@ def get_seasonal_ingredients():
     return _load()["seasonal_ingredients"]
 
 
-def get_wine_list():
-    """Return wines and their suggested pairings."""
-    return _load()["wine_list"]
-
-
 def get_pantry():
     """Return the current stock as {ingredient: kg}."""
     return _load()["pantry"]
-
-
-def get_daily_plan(day):
-    """Return the persisted plan dict for a day (date or ISO string), or None if not saved yet."""
-    return _load()["daily_plan"].get(str(day))
 
 
 # ----------------------------------------------------------------------
@@ -159,21 +138,6 @@ def set_stock(ingredient, kg):
     """Overwrite the stock of one ingredient (e.g. after a delivery)."""
     store = _load()
     store["pantry"][ingredient] = kg
-    _save(store)
-
-
-def save_daily_plan(day, guests, soup, order_list, staffing):
-    """Persist the finished plan for a day so it can be recalled later."""
-    day = str(day)
-    store = _load()
-    store["daily_plan"][day] = {
-        "day": day,
-        "guests": guests,
-        "soup": soup,
-        "order_list": order_list,
-        "staffing": staffing,
-        "created_at": datetime.now().isoformat(timespec="seconds"),
-    }
     _save(store)
 
 

@@ -40,7 +40,6 @@ AGENT_STYLE = {   # node name -> (icon, display name, Italian role)
     "soup_agent":       ("🍲", "Soup",       "il cuoco"),
     "purchasing_agent": ("🛒", "Purchasing", "il dispensiere"),
     "staffing_agent":   ("👥", "Staffing",   "il caposala"),
-    "sommelier_agent":  ("🍷", "Sommelier",  "il sommelier"),
     "supervisor":       ("👨‍🍳", "Robo-Giovanni",   "il capo della brigata"),
     "robo_giovanni":    ("👨‍🍳", "Robo-Giovanni",   "il capo della brigata"),
 }
@@ -55,7 +54,6 @@ AGENT_COLORS = {
     "soup_agent":       "#fb923c",   # orange
     "purchasing_agent": "#2dd4bf",   # teal
     "staffing_agent":   "#c084fc",   # violet
-    "sommelier_agent":  "#f472b6",   # rose
 }
 _FALLBACK_COLOR = "#94a3b8"          # any agent you add yourself
 
@@ -72,8 +70,6 @@ def _who(n):
     return f"<span class='pz-who' data-ag='{n}'>{icon} {_esc(name)}</span>"
 STEP_STYLE = {    # plain-Python nodes in the sequential graph
     "check_inventory": ("🔍", "Inventory check"),
-    "persist":     ("💾", "Save plan"),
-    "save_day_plan":   ("💾", "Save plan"),
 }
 PATTERNS = {
     "sequential": ("🏭", "Sequential", "La Mise en Place"),
@@ -639,9 +635,6 @@ class _LiveView:
                 else:
                     self.status[node] = "done"
                     self._event("🔍", "Stock check passed: the soup ingredient is available", "hand")
-            elif node in ("persist", "save_day_plan"):
-                self.status[node] = "done"
-                self._event("💾", "Day plan saved to <code>utils/restaurant_store.json</code>", "hand")
             else:
                 self.status[node] = "done"
                 self._event("⚙️", f"{_esc(node)} done")
