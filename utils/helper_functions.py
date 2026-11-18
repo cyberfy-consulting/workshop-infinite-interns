@@ -1,9 +1,11 @@
 import logging
-import sqlite3
+from collections.abc import Mapping
+from datetime import date, datetime, timedelta
+from typing import Any, List
+
 import pandas as pd
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from typing import List, Callable
+import requests
+from requests.adapters import HTTPAdapter, Retry
 from langchain_core.messages import (
     BaseMessage,
     SystemMessage,
@@ -11,161 +13,193 @@ from langchain_core.messages import (
     AIMessage,
     ToolMessage,
 )
-from langchain_core.tools import BaseTool, tool as create_tool
-from langchain_core.runnables import RunnableConfig
-from langgraph.types import interrupt 
-from langgraph.prebuilt.interrupt import HumanInterruptConfig, HumanInterrupt
+from langchain.agents.middleware import HumanInTheLoopMiddleware
+from IPython.display import HTML, display
+from utils.booking_system_db import CLOSING_TIME, OPENING_TIME, RESERVATION_COLUMNS, TODAY, fetch_reservations
+from utils.visualize_restaurant import restaurant_html
 
-logging.getLogger('httpx').setLevel(logging.WARNING)
-logging.getLogger('httpcore').setLevel(logging.WARNING)
+LOG_LEVEL_NAME = "WARNING"
 
-def get_current_time() -> str:
-    """
-    Get the current time formatted nicely for display.
-    """
-    # Get current datetime
-    now = datetime.now(ZoneInfo("Europe/Zurich"))
-    # Format as a human-readable sentence
-    formatted = now.strftime("%A, %B %d, %Y at %H:%M")
-    return f"It is currently {formatted}."
-
-def list_reservations_df():
-    conn = sqlite3.connect("utils/booking.db")
-    df = pd.read_sql(
-        "SELECT id, name, reservation_time, party_size, outside FROM reservations",
-        conn
-    )
-    conn.close()
-    if not df.empty and not "Eve" in df["name"].values:
-        df["reservation_time"] = pd.to_datetime(df["reservation_time"], format='mixed')
-        df["outside"] = df["outside"].astype(bool)
-    return df
-
-def list_customers_df():
-    conn = sqlite3.connect("utils/loyalty.db")
-    df = pd.read_sql(
-        "SELECT name, address, loyalty_points FROM customers",
-        conn
-    )
-    conn.close()
-    if not df.empty:
-        df["loyalty_points"] = df["loyalty_points"].astype(int)
-    return df
-
-def restore_booking_db():
-    """
-    Restore the booking database to its original state
-    """
-    conn = sqlite3.connect("utils/booking.db")
-    cur = conn.cursor()
-    cur.execute("DELETE FROM reservations")  # Clear existing data
-    # Reinsert original data
-    cur.executemany(
-        "INSERT INTO reservations (name, reservation_time, party_size, outside) VALUES (?, ?, ?, ?)",
-        [
-            ("Alice", "2026-06-27 18:30", 2, False),
-            ("Bob",   "2026-06-27 19:00", 4, True),
-            ("Carol", "2026-06-28 12:30", 3, False),
-            ("Dave",  "2026-06-26 20:00", 5, True),
-        ]
-    )
-    conn.commit()
-    conn.close()
-
-def restore_loyalty_db():
-    """
-    Restore the loyalty database to its original state
-    """
-    conn = sqlite3.connect("utils/loyalty.db")
-    cur = conn.cursor()
-    cur.execute("DELETE FROM customers")  # Clear existing data
-    # Reinsert original data
-    cur.executemany(
-        "INSERT INTO customers (name, address, loyalty_points) VALUES (?, ?, ?)",
-        [
-            ("Max Mustermann", "Musterstrasse 1, Musterstadt", 100),
-            ("John Doe", "Doe Street 2, Example City", 150),
-        ]
-    )
-    conn.commit()
-    conn.close()
+for logger_name in ("httpx", "httpcore", "openai"):
+    logging.getLogger(logger_name).setLevel(LOG_LEVEL_NAME)
 
 
+def weekday(date) -> str:
+    """Weekday name for a date object or an ISO string."""
+    return datetime.strptime(str(date), "%Y-%m-%d").strftime("%A")
 
-def pretty_print_chunk(log: dict):
-    """
-    Nicely prints a single agent log dict of the form:
-      {
-        "agent_name": {
-          "messages": [HumanMessage(...), AIMessage(...), ToolMessage(...), ...]
-        }
-      }
-    """
-    # ---- handle interrupts first ----
-    if "__interrupt__" in log:
-        # the value is typically a 1‐tuple containing an Interrupt instance
-        intr = log["__interrupt__"]
-        if isinstance(intr, tuple):
-            intr = intr[0]
-        print("🔔 Interrupt received:")
-        for idx, entry in enumerate(intr.value, start=1):
-            ar     = entry.get("action_request", {})
-            config = entry.get("config", {})
-            desc   = entry.get("description", "")
-            print(f" {idx}. Action: {ar.get('action')}  args={ar.get('args')}")
-            print(f"    Description: {desc}")
-            print(f"    Config:      {config}")
-        print()
-        return   # nothing more to do
 
-    for agent_name, agent_data in log.items():
-        print(f"Agent: {agent_name}")
-        messages = (agent_data or {}).get("messages", [])
-        if not messages:
-            print("  (no messages)\n")
+def month(date) -> int:
+    """Month number for a date object or an ISO string."""
+    return datetime.strptime(str(date), "%Y-%m-%d").month
+
+
+def month_to_season(month: int) -> str:
+    seasons = ("winter", "winter", "spring", "spring", "spring", "summer",
+               "summer", "summer", "autumn", "autumn", "autumn", "winter")
+    return seasons[(int(month) - 1) % 12]
+
+
+# WMO weather codes used by Open-Meteo
+WEATHER_FROM_CODE = {
+    0: "Clear sky", 
+    1: "Mainly clear", 
+    2: "Partly cloudy", 
+    3: "Overcast",
+    45: "Fog", 
+    48: "Depositing rime fog",
+    51: "Light drizzle", 
+    53: "Moderate drizzle", 
+    55: "Dense drizzle",
+    56: "Light freezing drizzle", 
+    57: "Dense freezing drizzle",
+    61: "Slight rain", 
+    63: "Moderate rain", 
+    65: "Heavy rain",
+    66: "Light freezing rain", 
+    67: "Heavy freezing rain",
+    71: "Slight snow fall", 
+    73: "Moderate snow fall", 
+    75: "Heavy snow fall",
+    77: "Snow grains",
+    80: "Slight rain showers", 
+    81: "Moderate rain showers", 
+    82: "Violent rain showers",
+    85: "Slight snow showers", 
+    86: "Heavy snow showers",
+    95: "Thunderstorm", 
+    96: "Thunderstorm with slight hail", 
+    99: "Thunderstorm with heavy hail",
+}
+
+def _http_get_weather_data(
+    start_date: date,
+    latitude: float,
+    longitude: float,
+    days: int,
+) -> Mapping[str, Any]:
+    end_date = start_date + timedelta(days=days - 1)
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "hourly": "weather_code,temperature_2m",
+        "timezone": "auto",
+    }
+
+    session = requests.Session()
+    session.mount("https://", HTTPAdapter(max_retries=Retry(total=3, backoff_factor=1)))
+    try:
+        response = session.get(
+            "https://archive-api.open-meteo.com/v1/archive",
+            params=params,
+            timeout=10,
+        )
+    except requests.exceptions.RequestException as exc:
+        raise ConnectionAbortedError(
+            "Weather lookup failed: the weather service did not respond. Please try again."
+        ) from exc
+    if not response.ok:
+        raise ConnectionAbortedError(
+            f"Weather lookup failed ({response.status_code}): only past dates are available."
+        )
+
+    return response.json()
+
+
+def pretty_weather_response(data: Mapping[str, Any]) -> str:
+    hourly = data["hourly"]
+    lines = []
+    current_day: date | None = None
+
+    for time_str, code, temp in zip(
+        hourly["time"], hourly["weather_code"], hourly["temperature_2m"]
+    ):
+        stamp = datetime.fromisoformat(time_str)
+        if not (OPENING_TIME <= f"{stamp:%H:%M}" <= CLOSING_TIME):
             continue
+        if stamp.date() != current_day:
+            current_day = stamp.date()
+            lines.extend(
+                [
+                    f"Weather for {stamp:%A, %Y-%m-%d}:",
+                    "\tHourly forecasts:",
+                ]
+            )
+        description = WEATHER_FROM_CODE.get(code, f"code{code}")
+        lines.append(f"\t\t{stamp:%H:%M}: {temp}°C, {description}")
 
-        for idx, msg in enumerate(messages, start=1):
-            # Message type (class name)
-            msg_type = msg.__class__.__name__
-            print(f" {idx}. {msg_type}")
-            # Core fields
-            content = getattr(msg, 'content', '')
-            print("    Content:")
-            for line in content.splitlines():
-                    print(f"      {line}")
-
-            # Additional kwargs (e.g. tool_calls embedded)
-            additional = getattr(msg, "additional_kwargs", None)
-            if additional:
-                # If tool_calls exist under additional_kwargs, print them
-                tcs = additional.get("tool_calls") or []
-                if tcs:
-                    print("    Tool calls:")
-                    for tc in tcs:
-                        name = tc.get("name") or tc.get("function", {}).get("name")
-                        args = tc.get("args") or tc.get("function", {}).get("arguments")
-                        print(f"      • {name} args={args}")
-
-            # Also check for top‐level .tool_calls list
-            top_tcs = getattr(msg, "tool_calls", [])
-            if top_tcs:
-                print("    Tool calls (top‐level):")
-                for tc in top_tcs:
-                    name = tc.get("name")
-                    args = tc.get("args")
-                    print(f"      • {name} args={args}")
-
-            print()  # blank line between messages
-        print()  # blank line between agents
+    return "\n".join(lines)
 
 
+HUMAN_IN_THE_LOOP = HumanInTheLoopMiddleware(
+    interrupt_on={
+        "get_weather": {
+            "allowed_decisions": ["approve", "edit", "respond"],
+            "description": "Please review the tool call",
+        }
+    }
+)
 
-def pretty_print(messages: List[BaseMessage]) -> None:
+_previous_ids = None
+
+
+def _as_flag(value):
+    """0/1/NULL from the database become booleans; anything else (e.g. hex-encoded after Eve) is shown as is."""
+    if value is None:
+        return False
+    return {0: False, 1: True}.get(value, value)
+
+
+def show_reservations_from_system(reservation_date: date | str | None = TODAY):
+    """Table and seating plan of the reservations for one date (all dates for None), for the human eye."""
+    global _previous_ids
+    df = pd.DataFrame(fetch_reservations(reservation_date), columns=RESERVATION_COLUMNS)
+
+    df["reservation_time"] = df["reservation_time"].astype(str)
+    for column in ("outside", "waterfront", "shade"):
+        df[column] = df[column].map(_as_flag)
+    
+    ids = set(df["reservation_id"])
+    if _previous_ids is None:
+        _previous_ids = ids  # Seed reservations are not highlighted on the first listing.
+    
+    # Reservations added since the previous listing.
+    new_ids = ids - _previous_ids
+    _previous_ids = ids
+    
+    # highlight every reservation added since the previous listing
+    styled = df.style.apply(
+        lambda row: ["background-color: #98c3f7" if row["reservation_id"] in new_ids else ""] * len(row),
+        axis=1,
+    ).hide(axis="index")
+    display(styled)
+
+    #floor plan: booked tables red with "guest, time" underneath, new reservations blue
+    with_table = df.dropna(subset=["table_id"])
+    raw_times = with_table["reservation_time"]
+    time_parts = raw_times.str.rsplit(" ", n=1).str[-1]
+    times = time_parts.str.slice(0, 5).where(time_parts.str.contains(":"), raw_times)
+    booked = dict(zip(with_table["table_id"], with_table["name"] + ", " + times))
+    new = set(df.loc[df["reservation_id"].isin(new_ids), "table_id"].dropna())
+    return HTML(restaurant_html(booked=booked, new=new))
+
+
+
+def pretty_print(response: Mapping[str, Any] | List[BaseMessage]) -> None:
     """
-    Print a sequence of LangChain messages in a concise, human-readable form,
-    omitting all IDs, token counts, and other metadata.
+    Print an agent response, or a plain list of LangChain messages, in a concise,
+    human-readable form, omitting all IDs, token counts, and other metadata.
+    Given the response of an agent, it also shows the tool calls the agent has
+    paused on, if a human decision is pending.
     """
+    if isinstance(response, Mapping):
+        messages = response.get("messages", [])
+        interrupts = response.get("__interrupt__")
+    else:
+        messages, interrupts = response, None
+
     for msg in messages:
         role = type(msg).__name__
         # Map class names to simpler labels
@@ -189,52 +223,39 @@ def pretty_print(messages: List[BaseMessage]) -> None:
         # Print the label and the actual content
         print(f"{label} {msg.content}\n")
 
+    if interrupts:
+        _print_interrupts(interrupts)
 
-def add_human_in_the_loop(
-    tool: Callable | BaseTool,
-    *,
-    interrupt_config: HumanInterruptConfig = None,
-) -> BaseTool:
-    """Wrap a tool to support human-in-the-loop review.""" 
-    if not isinstance(tool, BaseTool):
-        tool = create_tool(tool)
 
-    if interrupt_config is None:
-        interrupt_config = {
-            "allow_accept": True,
-            "allow_edit": True,
-            "allow_respond": True,
-        }
+def _print_interrupts(interrupts) -> None:
+    """Print the tool calls an agent has paused on."""
+    if not interrupts:
+        return
+    if not isinstance(interrupts, (tuple, list)):
+        interrupts = (interrupts,)
+    print("🔔 Interrupt received, the agent is waiting for your decision:")
+    for intr in interrupts:
+        value = intr.value
+        for idx, (action, config) in enumerate(
+            zip(value["action_requests"], value["review_configs"], strict=True),
+            start=1,
+        ):
+            print(f" {idx}. Action: {action.get('name')}  args={action.get('args')}")
+            print(f"    Description: {action.get('description', '')}")
+            print(f"    Decisions:   {config.get('allowed_decisions', [])}")
+    print()
 
-    @create_tool(  
-        tool.name,
-        description=tool.description,
-        args_schema=tool.args_schema
-    )
-    async def call_tool_with_interrupt(config: RunnableConfig, **tool_input):
-        request: HumanInterrupt = {
-            "action_request": {
-                "action": tool.name,
-                "args": tool_input
-            },
-            "config": interrupt_config,
-            "description": "Please review the tool call"
-        }
-        response = interrupt([request])[0]  
-        # approve the tool call
-        if response["type"] == "accept":
-            tool_response = await tool.ainvoke(tool_input, config)
-        # update tool call args
-        elif response["type"] == "edit":
-            tool_input = response["args"]["args"]
-            tool_response = await tool.ainvoke(tool_input, config)
-        # respond to the LLM with user feedback
-        elif response["type"] == "response":
-            user_feedback = response["args"]
-            tool_response = user_feedback
-        else:
-            raise ValueError(f"Unsupported interrupt response type: {response['type']}")
 
-        return tool_response
+def pretty_print_chunk(log: dict):
+    if "__interrupt__" in log:
+        _print_interrupts(log["__interrupt__"])
+        return
 
-    return call_tool_with_interrupt
+    for agent_name, agent_data in log.items():
+        print(f"Agent: {agent_name}")
+        messages = (agent_data or {}).get("messages", [])
+        if not messages:
+            print("  (no messages)\n")
+            continue
+
+        pretty_print(messages)  # blank line between agents
