@@ -20,7 +20,7 @@ from utils.visualize_restaurant import restaurant_html
 
 LOG_LEVEL_NAME = "WARNING"
 
-for logger_name in ("httpx", "httpcore", "openai", "azure"):
+for logger_name in ("httpx", "httpcore", "openai"):
     logging.getLogger(logger_name).setLevel(LOG_LEVEL_NAME)
 
 
