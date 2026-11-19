@@ -15,7 +15,7 @@ In this workshop, the participants will learn how to:
 
 ## Prerequisites
 
-- Python
+- Python 3.14 (the version Binder and the devcontainer use)
 - pip
 - A model deployed on Azure AI Foundry
 
