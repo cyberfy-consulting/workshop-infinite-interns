@@ -43,7 +43,7 @@ In this workshop, the participants will learn how to:
 
 Binder allows you to create custom computing environments that can be shared and used by many remote users. One such deployment lives at mybinder.org, and is free to use.
 
-https://mybinder.org/v2/gh/cyberfy-consulting/workshop-infinite-interns/main?urlpath=%2Fdoc%2Ftree%2Fworkshop.ipynb
+[Open the repository on mybinder](https://mybinder.org/v2/gh/cyberfy-consulting/workshop-infinite-interns/main?urlpath=%2Fdoc%2Ftree%2Fworkshop.ipynb)
 
 
 ## Project Structure
